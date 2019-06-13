@@ -1,0 +1,120 @@
+
+/* project and resource dialogs */
+label, input, select {
+  display: block;
+  padding-bottom: .5em;
+}
+
+input.text, select.text {
+  margin-bottom: 1em;
+  width: 95%;
+  padding: .5em;
+}
+
+fieldset {
+  padding: 0;
+  border: 0;
+  margin-top: 1em;
+}
+
+.progress {
+  padding: .5em 0 .5em 0;
+}
+
+
+/* don't display close button in the top right corner of the box */
+.no-close .ui-dialog-titlebar-close {
+  display: none;
+}
+
+.ui-dialog-content {
+  margin-top: 1em;
+}
+
+
+/* for mobile phones only */
+@media only screen and (max-width: 1080px) {
+
+  .ui-widget {
+    -ms-transform: scale(2);
+    -webkit-transform: scale(2);
+    transform: scale(2);
+  }
+
+  .ui-widget .ui-progressbar {
+    -ms-transform: scale(1);
+    -webkit-transform: scale(1);
+    transform: scale(1);
+  }
+
+  .ui-dialog .ui-dialog-buttonpane {
+    padding-top: 1em;
+  }
+
+  .ui-dialog .ui-dialog-buttonpane .ui-dialog-buttonset .ui-button {
+    -ms-transform: scale(1);
+    -webkit-transform: scale(1);
+    transform: scale(1);
+  }
+
+  .ui-dialog .ui-dialog-titlebar {
+    padding: 1em 2em;
+  }
+
+  .ui-dialog-titlebar .ui-button {
+    margin-right: 1em;
+  }
+
+  .ui-dialog-titlebar .ui-dialog-titlebar-close {
+    -ms-transform: scale(1);
+    -webkit-transform: scale(1);
+    transform: scale(1);
+  }
+}
+
+@media only screen and (max-width: 1080px) and (orientation:landscape) {
+
+  .ui-widget {
+    -ms-transform: scale(1.5);
+    -webkit-transform: scale(1.5);
+    transform: scale(1.5);
+  }
+
+  .ui-widget .ui-progressbar {
+    -ms-transform: scale(1);
+    -webkit-transform: scale(1);
+    transform: scale(1);
+  }
+
+  .ui-dialog .ui-dialog-buttonpane {
+    padding-top: 1em;
+  }
+
+  .ui-dialog .ui-dialog-buttonpane .ui-dialog-buttonset .ui-button {
+    -ms-transform: scale(1);
+    -webkit-transform: scale(1);
+    transform: scale(1);
+  }
+
+  .ui-dialog .ui-dialog-titlebar {
+    padding: 1em 2em;
+  }
+
+  .ui-dialog-titlebar .ui-button {
+    margin-right: 1em;
+  }
+
+  .ui-dialog-titlebar .ui-dialog-titlebar-close {
+    -ms-transform: scale(1);
+    -webkit-transform: scale(1);
+    transform: scale(1);
+  }
+}
+
+
+#root:after {
+  content: "initialising the experiment...";
+  position: fixed;
+  top: 50%;
+  left: 45%;
+}
