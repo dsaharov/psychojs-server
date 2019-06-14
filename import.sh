@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 mkdir study || true
-mkdir ./study/$2/
+mkdir ./study/$2/ || ([[ $# -eq 3 ]] && [ $3 = "--replace" ] && rm -rf ./study/$2/ && mkdir ./study/$2/)
 cd study/$2
 cp -r $1/* .
 find ./*.* | xargs -L 1 sed -i -e 's/https:\/\/lib.pavlovia.org\/psychojs.css/.\/css\/psychojs.css/g'
