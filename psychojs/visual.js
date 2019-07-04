@@ -6,6 +6,21 @@ import { ColorMixin } from './util.js';
 import { PsychoJS } from './core.js';
 import { Clock } from './util.js';
 
+// TODO: HACK to prevent continuous image loading
+const baseTextures = {};
+const getBaseTexture = function(image) {
+	let key = image;
+	if(typeof image !== 'string') {
+		key = image.src;
+	}
+	let bt = baseTextures[key];
+	if(!bt) {
+		bt = new PIXI.BaseTexture(image);
+		baseTextures[key] = bt;
+	}
+	return bt;
+};
+
 /**
  * Base class for all visual stimuli.
  *
@@ -184,11 +199,11 @@ class ImageStim extends mix(VisualStim).with(ColorMixin)
 		this._pixi = undefined;
 		if (typeof this._image === 'undefined')
 			return;
-		this._texture = new PIXI.Texture(new PIXI.BaseTexture(this._image));
+		this._texture = new PIXI.Texture(getBaseTexture(this._image));
 		this._pixi = new PIXI.Sprite(this._texture);
 		this._pixi.zOrder = this.depth;
 		if (typeof this._mask !== 'undefined') {
-			this._maskTexture = new PIXI.Texture(new PIXI.BaseTexture(this._mask));
+			this._maskTexture = new PIXI.Texture(getBaseTexture(this._mask));
 			this._pixi.mask = new PIXI.Sprite(this._maskTexture);
 			this._pixi.mask.anchor.x = 0.5;
 			this._pixi.mask.anchor.y = 0.5;
