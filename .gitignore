@@ -2,3 +2,4 @@ study/*
 resources/*
 venv/
 __pycache__/
+data/
