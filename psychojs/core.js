@@ -934,11 +934,10 @@ class PsychoJS {
 		try {
 			this.status = PsychoJS.Status.CONFIGURING;
 			const experimentUrl = window.location.href;
-			if (experimentUrl.indexOf('https://run.pavlovia.org/') === 0 || experimentUrl.indexOf('https://pavlovia.org/run/') === 0) {
+			const useServer = true;
+			if (useServer) {
 				const serverResponse = await this._serverManager.getConfiguration(configURL);
 				this._config = serverResponse.config;
-
-				this._config['psychoJsManager'] = { URL: 'https://pavlovia.org/server' };
 
 				if (!('experiment' in this._config))
 					throw 'missing experiment block in configuration';

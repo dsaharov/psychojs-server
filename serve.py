@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 from waitress import serve
-from flask import Flask, send_from_directory, render_template
+from flask import Flask, send_from_directory, render_template, jsonify, request
+from experiment_server import PsychoJsExperiment
 import json
+
+experiments = {}
 
 def init():
 
@@ -17,7 +20,19 @@ def init():
 
     @app.route('/study/<study>/')
     def send_study(study):
+        if study not in experiments:
+            experiments[study] = PsychoJsExperiment(study)
+            experiments[study].load_config()
         return send_from_directory('study/{}/'.format(study), 'index.html')
+
+    @app.route('/study/<study>/config.json')
+    def send_study_config(study):
+        return jsonify(experiments[study].config)
+
+    @app.route('/study/<study>/server/', methods=['GET', 'POST'])
+    def study_server(study):
+        response = experiments[study].handle_request(request)
+        return jsonify(response)
 
     @app.route('/study/<study>/<path:path>')
     def send_study_files(study, path):
