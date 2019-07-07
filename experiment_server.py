@@ -141,3 +141,6 @@ class ExperimentServer():
 
     def handle_request(self, study, request):
         return self.experiments[study].handle_request(request)
+
+    def experiment_names(self):
+        return self.experiments.keys()

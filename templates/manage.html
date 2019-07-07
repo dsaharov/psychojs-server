@@ -6,5 +6,10 @@
     <div class="user">Logged in as <i>{{ user }}</i> [<a class="logout" href="{{ url_for('logout') }}">logout</a>]</div>
     <br/>
     <h2>Active Studies</h2>
+    <ul class="studyList">
+    {% for study in studies %}
+      <li class="study">{{ study }} <a href="{{ url_for('manage_specific_study', study=study) }}" class="edit">edit</a></div>
+    {% endfor %}
+    </ul>
   </body>
 </html>

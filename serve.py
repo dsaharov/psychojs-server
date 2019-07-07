@@ -38,6 +38,17 @@ def init():
         auth.revoke_session_auth()
         return redirect(url_for('manage_view'))
 
+    @app.route('/manage/<study>', methods=['GET', 'POST'])
+    def manage_specific_study(study):
+        if not auth.is_session_authenticated() or \
+                not exp_server.has_study(study):
+            abort(404)
+        return render_template(
+            'manage_study.html',
+            study=study,
+            user=auth.get_authed_user()
+        )
+
     @app.route('/manage/', methods=['GET', 'POST'])
     def manage_view():
         if 'user' in request.values and 'pass' in request.values:
@@ -50,7 +61,8 @@ def init():
 
             return render_template(
                 'manage.html',
-                user=auth.get_authed_user()
+                user=auth.get_authed_user(),
+                studies=exp_server.experiment_names()
             )
         else:
             return render_template('login.html')
