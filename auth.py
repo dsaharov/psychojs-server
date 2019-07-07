@@ -42,3 +42,6 @@ class SimpleSessionAuth():
             self.add_auth(user)
             return True
         return False
+
+    def get_authed_user(self):
+        return json.loads(self.get_session_auth())['user']

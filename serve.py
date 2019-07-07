@@ -17,7 +17,7 @@ SECRET_KEY = hashlib.sha224(
 ).hexdigest()
 DATA_PATH = './data/'
 USERS = {
-    'admin': 'defaulto passwordo'
+    'admin': 'default'
 }
 
 
@@ -46,9 +46,13 @@ def init():
             )
 
         if auth.is_session_authenticated():
-            return send_from_directory('admin/', 'manage.html')
+
+            return render_template(
+                'manage.html',
+                user=auth.get_authed_user()
+            )
         else:
-            return send_from_directory('admin/', 'login.html')
+            return render_template('login.html')
 
     @app.route('/study/<study>/js/<path:path>')
     def send_js(study, path):
