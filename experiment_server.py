@@ -122,8 +122,14 @@ class ExperimentServer():
 
     def create_new_study(self, values, files):
         study = values['name']
+        bad_chars = ['/','?','+']
+        name_blacklist = ['new', 'logout']
+        if study is None or len(study) < 1 or \
+                any([c in study for c in bad_chars]) or study in name_blacklist:
+            raise ValueError('Invalid study name.')
         if study in self.experiments:
             raise ValueError('Study "{}" already exists.'.format(study))
+        #TODO: add study to experiments dict
         #TODO: save study resources
         for key in values:
             log('{}: {}'.format(key, values[key]))
