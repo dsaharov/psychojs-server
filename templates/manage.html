@@ -8,7 +8,11 @@
     <h2>Active Studies</h2>
     <ul class="studyList">
     {% for study in studies %}
-      <li class="study">{{ study }} <a href="{{ url_for('manage_specific_study', study=study) }}" class="edit">edit</a></div>
+      <li class="study">
+        {{ study }}
+        <a href="{{ url_for('send_study', study=study) }}" class="edit">view</a>
+        <a href="{{ url_for('manage_specific_study', study=study) }}" class="edit">edit</a>
+      </li>
     {% endfor %}
     </ul>
     <a class="newStudy" href="{{ url_for('new_study') }}">Add New Study</a>
