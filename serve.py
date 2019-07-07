@@ -14,17 +14,20 @@ def init():
 
     app = Flask(__name__, static_url_path='', static_folder='psychojs')
 
-
     if not os.path.exists(DATA_PATH):
         log('Creating data directory at {}'.format(DATA_PATH))
         os.makedirs(DATA_PATH)
 
     @app.route('/study/<name>/js/<path:path>')
     def send_js(name, path):
+        if study not in experiments:
+            abort(404)
         return send_from_directory('psychojs', path)
 
     @app.route('/study/<name>/css/<path:path>')
     def send_css(name, path):
+        if study not in experiments:
+            abort(404)
         return send_from_directory('css', path)
 
     @app.route('/study/<study>/')
@@ -50,15 +53,21 @@ def init():
 
     @app.route('/study/<study>/config.json')
     def send_study_config(study):
+        if study not in experiments:
+            abort(404)
         return jsonify(experiments[study].config)
 
     @app.route('/study/<study>/server/', methods=['GET', 'POST'])
     def study_server(study):
+        if study not in experiments:
+            abort(404)
         response = experiments[study].handle_request(request)
         return jsonify(response)
 
     @app.route('/study/<study>/<path:path>')
     def send_study_files(study, path):
+        if study not in experiments:
+            abort(404)
         return send_from_directory('study/{}'.format(study), path)
 
     return app
