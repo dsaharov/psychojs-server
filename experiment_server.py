@@ -120,6 +120,16 @@ class ExperimentServer():
         )
         self.experiments[study].load_config()
 
+    def create_new_study(self, values, files):
+        study = values['name']
+        if study in self.experiments:
+            raise ValueError('Study "{}" already exists.'.format(study))
+        #TODO: save study resources
+        for key in values:
+            log('{}: {}'.format(key, values[key]))
+        for key in files:
+            log('{}: {}'.format(key, files[key]))
+
     def load_experiments(self):
         if not os.path.exists('./study/'):
             log('Creating study directory')

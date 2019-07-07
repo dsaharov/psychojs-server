@@ -1,0 +1,25 @@
+<html>
+  <head>
+    <title>Create New Study</title>
+  </head>
+  <body>
+    <div class="user">Logged in as <i>{{ user }}</i> [<a class="logout" href="{{ url_for('logout') }}">logout</a>]</div>
+    <br/>
+    {% if message is not none %}
+    <div class="message">{{ message }}</div>
+    {% endif %}
+    <h2>New Study</h2>
+    <form action="./" method="POST" enctype="multipart/form-data">
+      Study Name
+      <input type="text" name="name"></input>
+      <br/>
+      PsychoJs Files
+      <input type="file" name="file"></input>
+      <br/>
+      Resouce Files
+      <input type="file" name="resources"</input>
+      <br/>
+      <input type="submit" value="Create Study"></input>
+    </form>
+  </body>
+</html>

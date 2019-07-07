@@ -11,5 +11,7 @@
       <li class="study">{{ study }} <a href="{{ url_for('manage_specific_study', study=study) }}" class="edit">edit</a></div>
     {% endfor %}
     </ul>
+    <a class="newStudy" href="{{ url_for('new_study') }}">Add New Study</a>
+
   </body>
 </html>

@@ -49,6 +49,27 @@ def init():
             user=auth.get_authed_user()
         )
 
+    @app.route('/manage/new/', methods=['GET', 'POST'])
+    def new_study():
+        if not auth.is_session_authenticated():
+            abort(404)
+        message=None
+        study = request.values.get('name', None)
+        if study is not None:
+            try:
+                exp_server.create_new_study(
+                    request.values,
+                    request.files
+                )
+                return redirect(url_for('manage_specific_study', study=study))
+            except Exception as e:
+                message = str(e)
+        return render_template(
+            'new_study.html',
+            user=auth.get_authed_user(),
+            message=message
+        )
+
     @app.route('/manage/', methods=['GET', 'POST'])
     def manage_view():
         if 'user' in request.values and 'pass' in request.values:
