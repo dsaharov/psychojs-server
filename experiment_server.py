@@ -5,6 +5,7 @@ import tempfile
 from werkzeug.utils import secure_filename
 from import_study import import_study
 import datetime
+import shutil
 
 EXPERIMENT_SESSION_TIMEOUT = datetime.timedelta(hours=2)
 
@@ -78,6 +79,10 @@ class PsychoJsExperiment():
         self.sessions[token].close(session_completed)
         del self.sessions[token]
 
+    def close_all_sessions(self):
+        for token in self.sessions:
+            self.close_session(token)
+
     def timeout_old_sessions(self):
         now = datetime.datetime.now()
         expired_sessions = [
@@ -139,9 +144,8 @@ class ExperimentServer():
         if not os.path.exists(study_path):
             self.log('New study folder: {}'.format(study_path), study=study)
             os.makedirs(study_path)
-        data_path = '{}{}/'.format(
-            self.data_path,
-            study
+        data_path = os.path.join(
+            self.data_path, study
         )
         if not os.path.exists(data_path):
             self.log('New data folder: {}'.format(data_path), study=study)
@@ -190,6 +194,17 @@ class ExperimentServer():
     def update_study_files(self, study, files):
         self.log('Updating study files', study=study)
         self._import_study_files(study, files, replace=True)
+
+    def delete_study(self, study, delete_data=False):
+        log('Removing study "{}"'.format(study), study=study)
+        exp = self.experiments[study]
+        del self.experiments[study]
+        exp.close_all_sessions()
+        shutil.rmtree(os.path.join('study',study))
+        if delete_data:
+            shutil.rmtree(os.path.join(self.data_path, study))
+            log('Removed all collected data.'.format(study), study=study)
+        log('Study has been deleted.', study=study)
 
     def load_experiments(self):
         if not os.path.exists('./study/'):

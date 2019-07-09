@@ -40,7 +40,7 @@ def init():
         auth.revoke_session_auth()
         return redirect(url_for('manage_view'))
 
-    @app.route('/manage/<study>', methods=['GET', 'POST'])
+    @app.route('/manage/<study>/', methods=['GET', 'POST'])
     def manage_specific_study(study):
         if not auth.is_session_authenticated() or \
                 not exp_server.has_study(study):
@@ -59,6 +59,26 @@ def init():
                 message = str(e)
         return render_template(
             'manage_study.html',
+            study=study,
+            user=auth.get_authed_user(),
+            message=message
+        )
+
+    @app.route('/manage/<study>/delete/', methods=['GET', 'POST'])
+    def delete_study(study):
+        if not auth.is_session_authenticated() or \
+                not exp_server.has_study(study):
+            abort(404)
+        message = None
+        if request.values.get('confirm', False):
+            delete_data=request.values.get('delete_data', False)
+            exp_server.delete_study(study, delete_data=delete_data)
+            #TODO: show message on study list page
+            return redirect(url_for('manage_view'))
+        elif request.method == 'POST':
+            message = '"Confirm" was not checked, so no action was taken.'
+        return render_template(
+            'delete_study.html',
             study=study,
             user=auth.get_authed_user(),
             message=message
