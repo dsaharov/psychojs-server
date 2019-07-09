@@ -4,6 +4,9 @@ import os
 import tempfile
 from werkzeug.utils import secure_filename
 from import_study import import_study
+import datetime
+
+EXPERIMENT_SESSION_TIMEOUT = datetime.timedelta(hours=2)
 
 class ExperimentSession():
 
@@ -13,6 +16,7 @@ class ExperimentSession():
         self.data_path = data_path
         self.save_data_on_incomplete = save_data_on_incomplete
         self.data = {}
+        self.start_time = datetime.datetime.now()
 
     def log(self, msg):
         log(msg, study=self.study, token=self.token)
@@ -70,12 +74,28 @@ class PsychoJsExperiment():
         self.next_session_token += 1
         return str(token)
 
+    def close_session(self, token, session_completed=False):
+        self.sessions[token].close(session_completed)
+        del self.sessions[token]
+
+    def timeout_old_sessions(self):
+        now = datetime.datetime.now()
+        expired_sessions = [
+            t for t in self.sessions
+                if now - self.sessions[t].start_time
+                    > EXPERIMENT_SESSION_TIMEOUT
+        ]
+        for token in expired_sessions:
+            self.log('Closing expired session.', token=token)
+            self.close_session(token)
+
     def handle_request(self, request):
         command = request.args['command']
         self.log('Request: {}'.format(command))
         response = {}
         token = request.values.get('token', None)
         if command == 'open_session':
+            self.timeout_old_sessions()
             token = self.get_next_session_token()
             self.log('Opening session', token=token)
             experiment_session = ExperimentSession(
@@ -93,8 +113,7 @@ class PsychoJsExperiment():
             #TODO: unusued parameters
             # experiment_full_path = request.values['experimentFullPath']
             session_completed = request.values['isCompleted'] == 'true'
-            self.sessions[token].close(session_completed)
-            del self.sessions[token]
+            self.close_session(token, session_completed)
         elif command == 'save_data':
             self.log('Incoming data', token=token)
             #TODO: unusued parameters

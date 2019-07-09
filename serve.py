@@ -94,7 +94,6 @@ def init():
             )
 
         if auth.is_session_authenticated():
-
             return render_template(
                 'manage.html',
                 user=auth.get_authed_user(),
@@ -130,7 +129,6 @@ def init():
             abort(404)
         study_path = exp_server.get_path(study)
         return send_from_directory(study_path, 'index.html')
-
 
     @app.route('/study/<study>/config.json')
     def send_study_config(study):
