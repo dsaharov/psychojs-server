@@ -79,7 +79,6 @@ def init():
                 return redirect(url_for('manage_specific_study', study=study))
             except Exception as e:
                 message = str(e)
-                raise
         return render_template(
             'new_study.html',
             user=auth.get_authed_user(),
