@@ -45,10 +45,23 @@ def init():
         if not auth.is_session_authenticated() or \
                 not exp_server.has_study(study):
             abort(404)
+        message = None
+        if 'newfiles' in request.files:
+            try:
+                exp_server.update_study_files(
+                    study,
+                    request.files.getlist('newfiles')
+                )
+                message = 'Uploaded new version of "{}"'.format(
+                    study
+                )
+            except Exception as e:
+                message = str(e)
         return render_template(
             'manage_study.html',
             study=study,
-            user=auth.get_authed_user()
+            user=auth.get_authed_user(),
+            message=message
         )
 
     @app.route('/manage/new/', methods=['GET', 'POST'])
@@ -61,11 +74,12 @@ def init():
             try:
                 exp_server.create_new_study(
                     request.values,
-                    request.files
+                    request.files.getlist('files')
                 )
                 return redirect(url_for('manage_specific_study', study=study))
             except Exception as e:
                 message = str(e)
+                raise
         return render_template(
             'new_study.html',
             user=auth.get_authed_user(),

@@ -5,6 +5,16 @@
   <body>
     <div class="user">Logged in as <i>{{ user }}</i> [<a class="logout" href="{{ url_for('logout') }}">logout</a>]</div>
     <br/>
+    {% if message is not none %}
+    <div class="message">{{ message }}</div>
+    {% endif %}
     <h2>Edit Study: {{ study }}</h2>
+    <h3>Updating study files</h3>
+    <form action="./{{ study }}" method="POST" enctype="multipart/form-data" >
+      Html folder
+      <input type="file" name="newfiles" webkitdirectory mozdirectory multiple=""></input>
+      <br/>
+      <input type="submit" value="Upload new files"></input>
+    </form>
   </body>
 </html>

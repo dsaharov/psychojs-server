@@ -1,6 +1,9 @@
 import json
 from logger import log
 import os
+import tempfile
+from werkzeug.utils import secure_filename
+from import_study import import_study
 
 class ExperimentSession():
 
@@ -120,6 +123,29 @@ class ExperimentServer():
         )
         self.experiments[study].load_config()
 
+    def _import_study_files(self, study, files, replace=False):
+        if study in self.experiments and not replace:
+            raise ValueError('Study "{}" already exists.'.format(study))
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log('Saving study files to {}'.format(temp_dir))
+            study_files = []
+            for file in files:
+                path = file.filename
+                new_filename = secure_filename(path)[len('html_'):]
+                full_path = os.path.join(
+                    temp_dir,
+                    new_filename
+                )
+                study_files.append({
+                    'path': path,
+                    'full_path': full_path,
+                    'name': new_filename
+                })
+                file.save(full_path)
+            log('Copying files for "{}"'.format(study))
+            import_study(study, study_files, replace=replace)
+            log('Done importing study "{}"'.format(study))
+
     def create_new_study(self, values, files):
         study = values['name']
         bad_chars = ['/','?','+']
@@ -127,14 +153,13 @@ class ExperimentServer():
         if study is None or len(study) < 1 or \
                 any([c in study for c in bad_chars]) or study in name_blacklist:
             raise ValueError('Invalid study name.')
-        if study in self.experiments:
-            raise ValueError('Study "{}" already exists.'.format(study))
-        #TODO: add study to experiments dict
-        #TODO: save study resources
-        for key in values:
-            log('{}: {}'.format(key, values[key]))
-        for key in files:
-            log('{}: {}'.format(key, files[key]))
+        log('Trying to add new study "{}"'.format(study))
+        self._import_study_files(study, files, replace=False)
+        self.add_study(study)
+
+    def update_study_files(self, study, files):
+        log('Updating files for "{}"'.format(study))
+        self._import_study_files(study, files, replace=True)
 
     def load_experiments(self):
         if not os.path.exists('./study/'):
@@ -144,7 +169,7 @@ class ExperimentServer():
         log('Registering experiments...')
         for study in os.listdir('./study/'):
             self.add_study(study)
-            log('Added "{}""'.format(study))
+            log('Added "{}"'.format(study))
 
     def has_study(self, study):
         return study in self.experiments
