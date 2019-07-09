@@ -5,7 +5,7 @@ import glob
 from logger import log
 
 def import_js(study_name, study_files):
-    log('Copying js for study "{}"'.format(study_name))
+    log('Copying js', study=study_name)
     js_file_path = None
     for f in study_files:
         #TODO: the transpiled js file is hard to deal with; omit it for now
@@ -41,7 +41,7 @@ def import_js(study_name, study_files):
 
 def import_resources(study_name, study_files, js_file_path):
     # Copy the uploaded study resources and make them available in the study
-    log('Copying resources for study "{}"'.format(study_name))
+    log('Copying resources', study=study_name)
     os.makedirs(os.path.join('study', study_name, 'resources'))
     resources = []
     for f in study_files:
@@ -79,7 +79,7 @@ def import_study(study_name, study_files, replace=False):
     if os.path.exists(study_path):
         if not replace:
             raise ValueError('Study already exists')
-        log('Removing old version of "{}"'.format(study_name))
+        log('Removing current files', study=study_name)
         shutil.rmtree(study_path)
     os.makedirs(study_path)
     js_file_path = import_js(study_name, study_files)
