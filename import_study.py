@@ -15,9 +15,9 @@ def import_js(study_name, study_files):
         if any(f['name'].endswith(x) for x in ['html', 'js']):
             path = os.path.join('study',study_name,f['name'])
             # Copy the file, making compatability changes in the process
-            with open(f['full_path']) as source_file:
+            with open(f['full_path'], encoding='utf-8') as source_file:
                 file_contents = source_file.read()
-            with open(path, 'w') as dest_file:
+            with open(path, 'w', encoding='utf-8') as dest_file:
                 dest_file.write(
                     file_contents.replace(
                         'https://lib.pavlovia.org/psychojs.css',
@@ -69,9 +69,9 @@ psychoJS.start({}expName, expInfo, resources{});
         '{',
         '}'
     )
-    with open(js_file_path) as f:
+    with open(js_file_path, encoding='utf-8') as f:
         contents = f.read()
-    with open(js_file_path, 'w') as f:
+    with open(js_file_path, 'w', encoding='utf-8') as f:
         f.write(contents.replace('psychoJS.start({expName, expInfo});', resource_str, 1))
 
 def import_study(study_name, study_files, replace=False):
