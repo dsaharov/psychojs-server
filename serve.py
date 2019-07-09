@@ -8,7 +8,7 @@ import os
 from logger import log
 import hashlib
 import datetime
-from auth import SimpleSessionAuth
+from auth import SimpleSessionAuth, Lockout
 
 
 # Generate a key for signing session cookies
@@ -21,12 +21,18 @@ USERS = {
 }
 
 ALLOW_UNAUTHED_STUDY_ACCESS = False
+ATTEMPTS_BEFORE_LOCKOUT = 10
+LOCKOUT_DURATION = datetime.timedelta(minutes=10)
 
 
 def init():
     app = Flask(__name__, static_url_path='', static_folder='psychojs')
     app.secret_key = SECRET_KEY
-    auth = SimpleSessionAuth(USERS)
+    auth = SimpleSessionAuth(
+        USERS,
+        timeout_attempts=ATTEMPTS_BEFORE_LOCKOUT,
+        timeout_duration=LOCKOUT_DURATION
+    )
 
     exp_server = ExperimentServer(DATA_PATH)
     exp_server.load_experiments()
@@ -108,10 +114,17 @@ def init():
     @app.route('/manage/', methods=['GET', 'POST'])
     def manage_view():
         if 'user' in request.values and 'pass' in request.values:
-            auth.authenticate(
-                request.values['user'],
-                request.values['pass']
-            )
+            try:
+                auth.authenticate(
+                    request.values['user'],
+                    request.values['pass']
+                )
+            except Lockout:
+                log('{} failed login attempts; user "{}" locked for {}.'.format(
+                    ATTEMPTS_BEFORE_LOCKOUT,
+                    request.values['user'],
+                    LOCKOUT_DURATION
+                ))
 
         if auth.is_session_authenticated():
             return render_template(
