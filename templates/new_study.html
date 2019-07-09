@@ -4,6 +4,7 @@
   </head>
   <body>
     <div class="user">Logged in as <i>{{ user }}</i> [<a class="logout" href="{{ url_for('logout') }}">logout</a>]</div>
+    <div class="back"><a href="../">Back to studies list</a></div>
     <br/>
     {% if message is not none %}
     <div class="message">{{ message }}</div>
