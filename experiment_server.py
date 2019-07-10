@@ -6,6 +6,9 @@ from werkzeug.utils import secure_filename
 from import_study import import_study
 import datetime
 import shutil
+import subprocess
+from contextlib import contextmanager
+
 
 EXPERIMENT_SESSION_TIMEOUT = datetime.timedelta(hours=2)
 
@@ -205,6 +208,29 @@ class ExperimentServer():
             shutil.rmtree(os.path.join(self.data_path, study))
             log('Removed all collected data.'.format(study), study=study)
         log('Study has been deleted.', study=study)
+
+    @contextmanager
+    def get_study_data_archive(self, study):
+        if study not in self.experiments:
+            raise ValueError('No such study "{}"'.format(study))
+        log('Retrieving study data', study=study)
+        with tempfile.TemporaryDirectory() as temp_path:
+            data_file_path = os.path.join(
+                temp_path, 'study_data_{}.tar.gz'.format(study))
+            tar_source = os.path.join(self.experiments[study].data_path, '*')
+            cmd = ' '.join([
+                'tar',
+                '-czf',
+                data_file_path,
+                tar_source
+            ])
+            log(cmd, study=study)
+            subprocess.run(
+                cmd,
+                check=True,
+                shell=True
+            )
+            yield data_file_path
 
     def load_experiments(self):
         if not os.path.exists('./study/'):

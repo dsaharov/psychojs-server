@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from waitress import serve
 from flask import Flask, send_from_directory, render_template, jsonify, \
-    request, abort, session, redirect, url_for
+    request, abort, session, redirect, url_for, send_file
 from experiment_server import ExperimentServer
 import json
 import os
@@ -69,6 +69,13 @@ def init():
             user=auth.get_authed_user(),
             message=message
         )
+    @app.route('/manage/<study>/data/', methods=['GET'])
+    def download_study_data(study):
+        if not auth.is_session_authenticated() or \
+                not exp_server.has_study(study):
+            abort(404)
+        with exp_server.get_study_data_archive(study) as data_file:
+            return send_file(data_file, as_attachment=True)
 
     @app.route('/manage/<study>/delete/', methods=['GET', 'POST'])
     def delete_study(study):
