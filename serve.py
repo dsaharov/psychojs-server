@@ -43,7 +43,7 @@ def init():
 
     @app.route('/manage/logout')
     def logout():
-        auth.revoke_session_auth()
+        auth.revoke_session_key()
         return redirect(url_for('manage_view'))
 
     @app.route('/manage/<study>/', methods=['GET', 'POST'])
