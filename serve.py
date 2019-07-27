@@ -17,8 +17,20 @@ SECRET_KEY = hashlib.sha224(
 ).hexdigest()
 DATA_PATH = './data/'
 USERS = {
-    'admin': 'default'
+    'admin': {
+        'password': 'default',
+        'permissions': {
+            'can_manage': True
+        }
+    }
 }
+def user_can_manage(auth):
+    return auth.get('can_manage', False)
+
+def user_can_access_study(study):
+    return (
+        lambda auth: user_can_manage(auth) or study in auth.get('studies', [])
+    )
 
 ALLOW_UNAUTHED_STUDY_ACCESS = False
 ATTEMPTS_BEFORE_LOCKOUT = 10
@@ -33,6 +45,22 @@ def init():
         timeout_attempts=ATTEMPTS_BEFORE_LOCKOUT,
         timeout_duration=LOCKOUT_DURATION
     )
+    def admin_access_allowed(study=None):
+        if study is not None:
+            return auth.is_session_authenticated(
+                permission_fn=user_can_access_study(study)
+            )
+        return auth.is_session_authenticated(
+            permission_fn=user_can_manage
+        )
+    def study_access_allowed(study):
+        if not exp_server.has_study(study):
+            return False
+        if ALLOW_UNAUTHED_STUDY_ACCESS:
+            return True
+        return auth.is_session_authenticated(
+            permission_fn=user_can_access_study(study)
+        )
 
     exp_server = ExperimentServer(DATA_PATH)
     exp_server.load_experiments()
@@ -48,8 +76,7 @@ def init():
 
     @app.route('/manage/<study>/', methods=['GET', 'POST'])
     def manage_specific_study(study):
-        if not auth.is_session_authenticated() or \
-                not exp_server.has_study(study):
+        if not admin_access_allowed(study=study):
             abort(404)
         message = None
         if 'newfiles' in request.files:
@@ -71,16 +98,14 @@ def init():
         )
     @app.route('/manage/<study>/data/', methods=['GET'])
     def download_study_data(study):
-        if not auth.is_session_authenticated() or \
-                not exp_server.has_study(study):
+        if not admin_access_allowed(study=study):
             abort(404)
         with exp_server.get_study_data_archive(study) as data_file:
             return send_file(data_file, as_attachment=True)
 
     @app.route('/manage/<study>/delete/', methods=['GET', 'POST'])
     def delete_study(study):
-        if not auth.is_session_authenticated() or \
-                not exp_server.has_study(study):
+        if not admin_access_allowed(study=study):
             abort(404)
         message = None
         if request.values.get('confirm', False):
@@ -97,9 +122,49 @@ def init():
             message=message
         )
 
+    @app.route('/manage/<study>/invite/')
+    def create_participant_code(study):
+        if not admin_access_allowed(study=study):
+            abort(404)
+        try:
+            username = auth.create_temporary_user(
+                properties={
+                    'permissions': {
+                        'studies': [study]
+                    }
+                }
+            )
+            def remove_temp_user():
+                log('Callback for temp user "{}""'.format(username))
+                auth.delete_user(username)
+            exp_server.add_participant_code(
+                username,
+                study,
+                callback=remove_temp_user
+            )
+        except:
+            abort(404)
+
+        return render_template(
+            'invite_code.html',
+            study=study,
+            user=auth.get_authed_user(),
+            code=username
+        )
+
+    @app.route('/participate/<code>')
+    def participate_code(code):
+        try:
+            study = exp_server.activate_participant_code(code)
+        except:
+            abort(404)
+        log('Activating participant code "{}"'.format(code))
+        auth.add_auth(code)
+        return redirect(url_for('send_study', study=study))
+
     @app.route('/manage/new/', methods=['GET', 'POST'])
     def new_study():
-        if not auth.is_session_authenticated():
+        if not admin_access_allowed():
             abort(404)
         message=None
         study = request.values.get('name', None)
@@ -133,7 +198,7 @@ def init():
                     LOCKOUT_DURATION
                 ))
 
-        if auth.is_session_authenticated():
+        if admin_access_allowed():
             return render_template(
                 'manage.html',
                 user=auth.get_authed_user(),
@@ -144,57 +209,40 @@ def init():
 
     @app.route('/study/<study>/js/<path:path>')
     def send_js(study, path):
-        if not ALLOW_UNAUTHED_STUDY_ACCESS and \
-                not auth.is_session_authenticated():
-            abort(404)
-        if not exp_server.has_study(study):
+        if not study_access_allowed(study):
             abort(404)
         return send_from_directory('psychojs', path)
 
     @app.route('/study/<study>/css/<path:path>')
     def send_css(study, path):
-        if not ALLOW_UNAUTHED_STUDY_ACCESS and \
-                not auth.is_session_authenticated():
-            abort(404)
-        if not exp_server.has_study(study):
+        if not study_access_allowed(study):
             abort(404)
         return send_from_directory('css', path)
 
     @app.route('/study/<study>/')
     def send_study(study):
-        if not ALLOW_UNAUTHED_STUDY_ACCESS and \
-                not auth.is_session_authenticated():
-            abort(404)
-        if not exp_server.has_study(study):
+        if not study_access_allowed(study):
             abort(404)
         study_path = exp_server.get_path(study)
         return send_from_directory(study_path, 'index.html')
 
     @app.route('/study/<study>/config.json')
     def send_study_config(study):
-        if not ALLOW_UNAUTHED_STUDY_ACCESS and \
-                not auth.is_session_authenticated():
-            abort(404)
-        if not exp_server.has_study(study):
+        if not study_access_allowed(study):
             abort(404)
         return jsonify(exp_server.get_config(study))
 
     @app.route('/study/<study>/server/', methods=['GET', 'POST'])
     def study_server(study):
-        if not ALLOW_UNAUTHED_STUDY_ACCESS and \
-                not auth.is_session_authenticated():
+        if not study_access_allowed(study):
             abort(404)
-        if not exp_server.has_study(study):
-            abort(404)
-        response = exp_server.handle_request(study, request)
+        response = exp_server.handle_request(
+            study, request, auth.get_authed_user())
         return jsonify(response)
 
     @app.route('/study/<study>/<path:path>')
     def send_study_files(study, path):
-        if not ALLOW_UNAUTHED_STUDY_ACCESS and \
-                not auth.is_session_authenticated():
-            abort(404)
-        if not exp_server.has_study(study):
+        if not study_access_allowed(study):
             abort(404)
         study_path = exp_server.get_path(study)
         return send_from_directory(study_path, path)

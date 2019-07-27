@@ -60,6 +60,7 @@ class PsychoJsExperiment():
         self.next_session_token = 1
         self.sessions = {}
         self.config = {}
+        self.callbacks = {}
 
     def load_config(self):
         self.config = {
@@ -81,6 +82,9 @@ class PsychoJsExperiment():
     def close_session(self, token, session_completed=False):
         self.sessions[token].close(session_completed)
         del self.sessions[token]
+        if token in self.callbacks:
+            self.callbacks[token]()
+            del self.callbacks[token]
 
     def close_all_sessions(self):
         for token in self.sessions:
@@ -97,47 +101,29 @@ class PsychoJsExperiment():
             self.log('Closing expired session.', token=token)
             self.close_session(token)
 
-    def handle_request(self, request):
-        command = request.args['command']
-        self.log('Request: {}'.format(command))
-        response = {}
-        token = request.values.get('token', None)
-        if command == 'open_session':
-            self.timeout_old_sessions()
-            token = self.get_next_session_token()
-            self.log('Opening session', token=token)
-            experiment_session = ExperimentSession(
-                self.id,
-                token,
-                self.data_path,
-                save_data_on_incomplete=True #TODO: load from settings
-            )
-            self.sessions[token] = experiment_session
-            response['token'] = token
-            #TODO: unusued parameters
-            # experiment_full_path = request.values['experimentFullPath']
-        elif command == 'close_session':
-            self.log('Closing session', token=token)
-            #TODO: unusued parameters
-            # experiment_full_path = request.values['experimentFullPath']
-            session_completed = request.values['isCompleted'] == 'true'
-            self.close_session(token, session_completed)
-        elif command == 'save_data':
-            self.log('Incoming data', token=token)
-            #TODO: unusued parameters
-            # experiment_full_path = request.values['experimentFullPath']
-            save_format = request.values['saveFormat']
-            self.log('Save format is "{}"'.format(save_format), token=token)
-            key = request.values['key']
-            data = request.values['value']
-            self.sessions[token].accept_data(key, data)
-        return response
+    def open_session(self, finished_callback=None):
+        token = self.get_next_session_token()
+        self.log('Opening session', token=token)
+        experiment_session = ExperimentSession(
+            self.id,
+            token,
+            self.data_path,
+            save_data_on_incomplete=True #TODO: load from settings
+        )
+        if finished_callback is not None:
+            self.callbacks[token] = finished_callback
+        self.sessions[token] = experiment_session
+        return token
+
+    def accept_data(self, key, data, token):
+        self.sessions[token].accept_data(key, data)
 
 class ExperimentServer():
 
     def __init__(self, data_path):
         self.experiments = {}
         self.data_path = data_path
+        self.participant_codes = {}
 
     def log(self, msg, **kwargs):
         log(msg, **kwargs)
@@ -251,8 +237,52 @@ class ExperimentServer():
     def get_config(self, study):
         return self.experiments[study].config
 
-    def handle_request(self, study, request):
-        return self.experiments[study].handle_request(request)
+    def handle_request(self, study, request, user):
+        exp = self.experiments[study]
+        command = request.args['command']
+        exp.log('Request: {}'.format(command))
+        response = {}
+        token = request.values.get('token', None)
+        if command == 'open_session':
+            exp.timeout_old_sessions()
+            if user in self.participant_codes:
+                session_token = self.participant_codes[user]['session']
+                del self.participant_codes[user]
+            else:
+                session_token = exp.open_session()
+            response['token'] = session_token
+            #TODO: unusued parameters
+            # experiment_full_path = request.values['experimentFullPath']
+        elif command == 'close_session':
+            self.log('Closing session', token=token)
+            #TODO: unusued parameters
+            # experiment_full_path = request.values['experimentFullPath']
+            session_completed = request.values['isCompleted'] == 'true'
+            exp.close_session(token, session_completed)
+        elif command == 'save_data':
+            exp.log('Incoming data', token=token)
+            #TODO: unusued parameters
+            # experiment_full_path = request.values['experimentFullPath']
+            save_format = request.values['saveFormat']
+            exp.log('Save format is "{}"'.format(save_format), token=token)
+            key = request.values['key']
+            data = request.values['value']
+            exp.accept_data(key, data, token)
+        return response
 
     def experiment_names(self):
         return self.experiments.keys()
+
+    def add_participant_code(self, code, study, callback):
+        self.participant_codes[code] = {
+            'study': study,
+            'session': self.experiments[study].open_session(
+                finished_callback=callback
+            )
+        }
+
+    def activate_participant_code(self, code):
+        if code not in self.participant_codes:
+            raise ValueError()
+        study = self.participant_codes[code]['study']
+        return study

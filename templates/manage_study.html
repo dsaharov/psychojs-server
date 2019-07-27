@@ -9,7 +9,8 @@
     {% if message is not none %}
     <div class="message">{{ message }}</div>
     {% endif %}
-    <h2>Edit Study: {{ study }}</h2>
+    <h2>Study Options: {{ study }}</h2>
+    <a class="getInviteCode" href="{{ url_for('create_participant_code', study=study) }}">Get Invite Code</a><br/>
     <a class="downloadData" href="./data/" download>Download Data</a>
     <h3>Updating study files</h3>
     <form action="./" method="POST" enctype="multipart/form-data" >
