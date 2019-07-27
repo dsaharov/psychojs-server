@@ -159,7 +159,7 @@ def init():
             study = exp_server.activate_participant_code(code)
         except:
             abort(404)
-        log('Activating participant code', code=code)
+        log('Participant code accessed', code=code)
         if not auth.check_add_auth(code):
             log('WARN: Code has no corresponding user', code=code)
             abort(404)

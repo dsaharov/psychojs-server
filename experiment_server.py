@@ -250,7 +250,6 @@ class ExperimentServer():
             exp.timeout_old_sessions()
             if user in self.participant_codes:
                 session_token = self.participant_codes[user]['session']
-                del self.participant_codes[user]
             else:
                 session_token = exp.open_session()
             response['token'] = session_token
