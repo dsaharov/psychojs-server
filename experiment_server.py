@@ -118,6 +118,9 @@ class PsychoJsExperiment():
     def accept_data(self, key, data, token):
         self.sessions[token].accept_data(key, data)
 
+    def has_session(self, token):
+        return token in self.sessions
+
 class ExperimentServer():
 
     def __init__(self, data_path):
@@ -282,7 +285,12 @@ class ExperimentServer():
         }
 
     def activate_participant_code(self, code):
-        if code not in self.participant_codes:
+        params = self.participant_codes[code]
+        study = params['study']
+        exp = self.experiments[study]
+        exp.timeout_old_sessions()
+        if not exp.has_session(params['session']):
+            self.log('Participant code is expired', code=code)
+            del self.participant_codes[code]
             raise ValueError()
-        study = self.participant_codes[code]['study']
         return study

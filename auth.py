@@ -74,6 +74,12 @@ class SimpleSessionAuth():
                 return False
         return True
 
+    def check_add_auth(self, user):
+        if user not in self.users:
+            return False
+        self.add_auth(user)
+        return True
+
     def authenticate(self, user, password):
         # Log out if logged in
         self.revoke_session_key()
@@ -105,9 +111,15 @@ class SimpleSessionAuth():
             self.users[name].update(properties)
         self.users[name]['created_time'] = datetime.now()
 
-    def create_temporary_user(self, name=None, properties=None):
-        if name is None:
-            name = secrets.token_urlsafe()
+    def create_temporary_user(
+            self, name=None, properties=None, readable_name=False):
+        if name in self.users:
+            raise ValueError('User already exists')
+        while name is None or name in self.users:
+            if readable_name:
+                name = secrets.token_hex(4)
+            else:
+                name = secrets.token_urlsafe()
         props = {}
         if properties is not None:
             props.update(properties)

@@ -132,10 +132,11 @@ def init():
                     'permissions': {
                         'studies': [study]
                     }
-                }
+                },
+                readable_name=True
             )
             def remove_temp_user():
-                log('Callback for temp user "{}""'.format(username))
+                log('Removing temp user',code=username)
                 auth.delete_user(username)
             exp_server.add_participant_code(
                 username,
@@ -158,8 +159,10 @@ def init():
             study = exp_server.activate_participant_code(code)
         except:
             abort(404)
-        log('Activating participant code "{}"'.format(code))
-        auth.add_auth(code)
+        log('Activating participant code', code=code)
+        if not auth.check_add_auth(code):
+            log('WARN: Code has no corresponding user', code=code)
+            abort(404)
         return redirect(url_for('send_study', study=study))
 
     @app.route('/manage/new/', methods=['GET', 'POST'])
