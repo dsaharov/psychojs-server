@@ -1,0 +1,91 @@
+body{
+  background-color:#EEEEEE;
+  padding:1px;
+  margin:0px;
+  font-family:sans-serif;
+}
+
+.content {
+  display: flex;
+  flex-direction:column;
+  flex-basis: 1 100%;
+  margin:0px;
+}
+
+.content-slice {
+  border: none;
+  padding:20px;
+}
+
+.header {
+  border-bottom:3px solid #333377;
+  display:flex;
+  flex-direction:row;
+}
+
+.spread {
+  display: flex;
+  width:100%;
+  justify-content:space-between;
+  flex-basis:100%;
+}
+
+.user {
+
+}
+
+.middle {
+  display: flex;
+  justify-content:center;
+}
+
+.middle form {
+
+}
+
+.middle input[type="submit"] {
+  margin-top:20px;
+  width:100%;
+}
+
+.middle .message {
+  margin:20px;
+  padding:10px;
+  border: 1px dotted gray;
+  width: 50%;
+  font-weight:300;
+  text-align:center;
+  background-color:#FFFFEE;
+}
+
+.footer {
+  border-top:3px solid #333377;
+}
+
+.content-box {
+  align-self:center;
+  border:1px dotted black;
+  background-color:#DEDEDE;
+  padding:10px;
+  min-width:30em;
+  min-height:8em;
+}
+
+.title {
+  text-align:center;
+  font-weight:normal;
+  font-size:2em;
+}
+
+.columns {
+  display: flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+.inviteCode{
+  border:1px dotted black;
+  padding:10px;
+  margin-top:20px;
+  display:inline-block;
+}

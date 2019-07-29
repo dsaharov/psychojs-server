@@ -1,14 +1,24 @@
 <html>
   <head>
     <title>Study Manager</title>
+    <link rel="stylesheet" href="/css/manage.css" />
   </head>
   <body>
+    <div class="content">
+    <div class="content-slice header columns">
+      <div class="title">Study Manager</div>
+    </div>
+    <div class="content-slice middle">
     <form method="post" action="./">
-      Username:
+      Username
       <input type="text" name="user"></input><br/>
-      Password:
+      Password
       <input type="password" name="pass"></input><br/>
-      <input type="submit" value="Login"></input>
+      <input class="btn-login" type="submit" value="Login"></input>
     </form>
+    </div>
+    <div class="content-slice footer">
+    </div>
+    </div>
   </body>
 </html>

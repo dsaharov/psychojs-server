@@ -1,21 +1,24 @@
 <html>
   <head>
     <title>Study Manager [{{ study }}]</title>
-    <style>
-      .inviteCode{
-        border:1px dotted black;
-        padding:10px;
-        margin-top:20px;
-        display:inline-block;
-      }
-    </style>
+    <link rel="stylesheet" href="/css/manage.css" />
   </head>
   <body>
-    <div class="user">Logged in as <i>{{ user }}</i> [<a class="logout" href="{{ url_for('logout') }}">logout</a>]</div>
-    <div class="back"><a href="../">Back to "{{ study }}"</a></div>
-    <br/>
-    <h2>Invite code for the "{{ study }}" study</h2>
-    This url gives access to <i>one run</i> of this study.<br/>
-    <a class="inviteCode" href="{{ url_for('participate_code', code=code, _external=True) }}">{{ url_for('participate_code', code=code, _external=True) }}</a>
+    <div class="content">
+    <div class="content-slice header columns">
+      <div class="spread">
+        <div class="back"><a href="../">Back to "{{ study }}"</a></div>
+        <div class="user">Logged in as <i>{{ user }}</i> [<a class="logout" href="{{ url_for('logout') }}">logout</a>]</div>
+      </div>
+      <div class="title">Study Manager</div>
+    </div>
+    <div class="content-slice middle columns">
+      <h2>Invite code for the "{{ study }}" study</h2>
+      <div>This url gives access to <i>one run</i> of this study.</div>
+      <a class="inviteCode" href="{{ url_for('participate_code', code=code, _external=True) }}">{{ url_for('participate_code', code=code, _external=True) }}</a>
+    </div>
+    <div class="content-slice footer">
+    </div>
+    </div>
   </body>
 </html>

@@ -1,21 +1,32 @@
 <html>
   <head>
     <title>Study Manager</title>
+    <link rel="stylesheet" href="/css/manage.css" />
   </head>
   <body>
-    <div class="user">Logged in as <i>{{ user }}</i> [<a class="logout" href="{{ url_for('logout') }}">logout</a>]</div>
-    <br/>
-    <h2>Active Studies</h2>
-    <ul class="studyList">
-    {% for study in studies %}
-      <li class="study">
-        {{ study }}
-        <a href="{{ url_for('send_study', study=study) }}" class="edit">view</a>
-        <a href="{{ url_for('manage_specific_study', study=study) }}" class="edit">edit</a>
-      </li>
-    {% endfor %}
-    </ul>
-    <a class="newStudy" href="{{ url_for('new_study') }}">Add New Study</a>
-
+    <div class="content">
+    <div class="content-slice header columns">
+      <div class="spread">
+        <div></div>
+        <div class="user">Logged in as <i>{{ user }}</i> [<a class="logout" href="{{ url_for('logout') }}">logout</a>]</div>
+      </div>
+      <div class="title">Study Manager</div>
+    </div>
+    <div class="content-slice middle columns">
+      <h2>Active Studies</h2>
+      <ul class="studyList">
+      {% for study in studies %}
+        <li class="study">
+          {{ study }}
+          <a href="{{ url_for('send_study', study=study) }}" class="edit">view</a>
+          <a href="{{ url_for('manage_specific_study', study=study) }}" class="edit">edit</a>
+        </li>
+      {% endfor %}
+      </ul>
+      <a class="newStudy" href="{{ url_for('new_study') }}">Add New Study</a>
+    </div>
+    <div class="content-slice footer">
+    </div>
+    </div>
   </body>
 </html>

@@ -1,24 +1,35 @@
 <html>
   <head>
     <title>Study Manager [{{ study }}]</title>
+    <link rel="stylesheet" href="/css/manage.css" />
   </head>
   <body>
-    <div class="user">Logged in as <i>{{ user }}</i> [<a class="logout" href="{{ url_for('logout') }}">logout</a>]</div>
-    <div class="back"><a href="../">Back to "{{ study }}"</a></div>
-    <br/>
-    {% if message is not none %}
-    <div class="message">{{ message }}</div>
-    {% endif %}
-    <h2>Delete the "{{ study }}" study.</h2>
-    <h3>Are you sure?</h3>
-    <form action="./" method="POST" enctype="multipart/form-data" >
-      I am sure I want to delete the <b><i>{{ study }}</i></b> study.
-      <input type="checkbox" name="confirm" value="Confirm"></input>
-      <br/>
-      <span style="color:red;"> Also I want to delete the collected data for the <b><i>{{ study }}</i></b> study.</span>
-      <input type="checkbox" name="delete_data" value="Delete the data too"></input>
-      <br/>
-      <input type="submit" value="Delete Study"></input>
-    </form>
+    <div class="content">
+    <div class="content-slice header columns">
+      <div class="spread">
+        <div class="back"><a href="../">Back to "{{ study }}"</a></div>
+        <div class="user">Logged in as <i>{{ user }}</i> [<a class="logout" href="{{ url_for('logout') }}">logout</a>]</div>
+      </div>
+      <div class="title">Study Manager</div>
+    </div>
+    <div class="content-slice middle columns">
+      {% if message is not none %}
+      <div class="message">{{ message }}</div>
+      {% endif %}
+      <h2>Delete the "{{ study }}" study.</h2>
+      <h3>Are you sure?</h3>
+      <form action="./" method="POST" enctype="multipart/form-data" >
+        I am sure I want to delete the <b><i>{{ study }}</i></b> study.
+        <input type="checkbox" name="confirm" value="Confirm"></input>
+        <br/>
+        <span style="color:red;"> Also I want to delete the collected data for the <b><i>{{ study }}</i></b> study.</span>
+        <input type="checkbox" name="delete_data" value="Delete the data too"></input>
+        <br/>
+        <input type="submit" value="Delete Study"></input>
+      </form>
+    </div>
+    <div class="content-slice footer">
+    </div>
+    </div>
   </body>
 </html>

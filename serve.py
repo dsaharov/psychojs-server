@@ -210,6 +210,10 @@ def init():
         else:
             return render_template('login.html')
 
+    @app.route('/css/<path>')
+    def send_css(path):
+        return send_from_directory('css', path)
+
     @app.route('/study/<study>/js/<path:path>')
     def send_js(study, path):
         if not study_access_allowed(study):
@@ -217,7 +221,7 @@ def init():
         return send_from_directory('psychojs', path)
 
     @app.route('/study/<study>/css/<path:path>')
-    def send_css(study, path):
+    def send_study_css(study, path):
         if not study_access_allowed(study):
             abort(404)
         return send_from_directory('css', path)

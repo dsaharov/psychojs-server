@@ -1,23 +1,34 @@
 <html>
   <head>
     <title>Create New Study</title>
+    <link rel="stylesheet" href="/css/manage.css" />
   </head>
   <body>
-    <div class="user">Logged in as <i>{{ user }}</i> [<a class="logout" href="{{ url_for('logout') }}">logout</a>]</div>
-    <div class="back"><a href="../">Back to studies list</a></div>
-    <br/>
-    {% if message is not none %}
-    <div class="message">{{ message }}</div>
-    {% endif %}
-    <h2>New Study</h2>
-    <form action="./" method="POST" enctype="multipart/form-data" >
-      Study Name
-      <input type="text" name="name"></input>
-      <br/>
-      Html folder
-      <input type="file" name="files" webkitdirectory mozdirectory multiple=""></input>
-      <br/>
-      <input type="submit" value="Create Study"></input>
-    </form>
+    <div class="content">
+    <div class="content-slice header columns">
+      <div class="spread">
+        <div class="back"><a href="../">Back to studies list</a></div>
+        <div class="user">Logged in as <i>{{ user }}</i> [<a class="logout" href="{{ url_for('logout') }}">logout</a>]</div>
+      </div>
+      <div class="title">Study Manager</div>
+    </div>
+    <div class="content-slice middle columns">
+      {% if message is not none %}
+      <div class="message">{{ message }}</div>
+      {% endif %}
+      <h2>New Study</h2>
+      <form action="./" method="POST" enctype="multipart/form-data" >
+        Study Name
+        <input type="text" name="name"></input>
+        <br/>
+        Html folder
+        <input type="file" name="files" webkitdirectory mozdirectory multiple=""></input>
+        <br/>
+        <input type="submit" value="Create Study"></input>
+      </form>
+    </div>
+    <div class="content-slice footer">
+    </div>
+    </div>
   </body>
 </html>
