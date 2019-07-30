@@ -17,8 +17,8 @@
       <div class="message">{{ message }}</div>
       {% endif %}
       <h2>Options - {{ study }}</h2>
-      <a class="getInviteCode" href="{{ url_for('create_participant_code', study=study) }}">Get Invite Code</a><br/>
-      <a class="downloadData" href="./data/" download>Download Data</a>
+      <a class="get-invite-code button" href="{{ url_for('create_participant_code', study=study) }}">Get Invite Code</a><br/>
+      <a class="download-data button" href="./data/" download>Download Data</a>
       <h3>Updating study files</h3>
       <form action="./" method="POST" enctype="multipart/form-data" >
         Html folder
@@ -28,7 +28,7 @@
       </form>
       <br/>
       <br/>
-      <a style="color:red; font-size:10px;" class="deleteStudy" href="{{ url_for('delete_study', study=study) }}">delete this study</a>
+      <a style="color:red; font-size:10px;" class="delete-study button" href="{{ url_for('delete_study', study=study) }}">delete this study</a>
     </div>
     <div class="content-slice footer">
     </div>

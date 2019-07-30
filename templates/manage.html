@@ -13,17 +13,19 @@
       <div class="title">Study Manager</div>
     </div>
     <div class="content-slice middle columns">
-      <h2>Active Studies</h2>
-      <ul class="studyList">
+      <h2>My Studies</h2>
+      <ul class="study-list">
       {% for study in studies %}
         <li class="study">
           {{ study }}
-          <a href="{{ url_for('send_study', study=study) }}" class="edit">view</a>
-          <a href="{{ url_for('manage_specific_study', study=study) }}" class="edit">edit</a>
+          <span class="list-options">
+          <a href="{{ url_for('send_study', study=study) }}" class="button">view</a>
+          <a href="{{ url_for('manage_specific_study', study=study) }}" class="button">edit</a>
+          </span>
         </li>
       {% endfor %}
       </ul>
-      <a class="newStudy" href="{{ url_for('new_study') }}">Add New Study</a>
+      <a class="new-study button" href="{{ url_for('new_study') }}">Add New Study</a>
     </div>
     <div class="content-slice footer">
     </div>
