@@ -47,10 +47,7 @@ def init():
         timeout_duration=LOCKOUT_DURATION
     )
     def admin_access_allowed(study=None):
-        if study is not None:
-            return auth.is_session_authenticated(
-                permission_fn=user_can_access_study(study)
-            )
+        # TODO: can user manage this specific study?
         return auth.is_session_authenticated(
             permission_fn=user_can_manage
         )
