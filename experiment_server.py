@@ -288,6 +288,8 @@ class ExperimentServer():
         self.add_study(study)
 
     def update_study_files(self, study, files):
+        if self.experiments[study].is_active():
+            raise ValueError('Study is currently running; deactivate it before changing files.')
         self.log('Updating study files', study=study)
         self._import_study_files(study, files, replace=True)
 
