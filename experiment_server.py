@@ -193,7 +193,9 @@ class PsychoJsExperiment():
             raise ValueError()
         while True:
             id = self.get_next_run_id()
-            run_data_path = os.path.join(self.data_path, str(id))
+            run_data_path = os.path.join(
+                self.data_path, 'run_{}'.format(id)
+            )
             #TODO: HACK
             if not os.path.exists(run_data_path):
                 break
@@ -313,18 +315,19 @@ class ExperimentServer():
         with tempfile.TemporaryDirectory() as temp_path:
             data_file_path = os.path.join(
                 temp_path, 'study_data_{}.tar.gz'.format(study))
-            tar_source = os.path.join(self.experiments[study].data_path, '*')
+            tar_source = self.experiments[study].data_path
             cmd = ' '.join([
                 'tar',
                 '-czf',
                 data_file_path,
-                tar_source
+                '*'
             ])
             log(cmd, study=study)
             subprocess.run(
                 cmd,
                 check=True,
-                shell=True
+                shell=True,
+                cwd=tar_source
             )
             yield data_file_path
 

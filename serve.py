@@ -136,7 +136,8 @@ def init():
         if not admin_access_allowed(study=study):
             abort(404)
         with exp_server.get_study_data_archive(study) as data_file:
-            return send_file(data_file, as_attachment=True)
+            # cache_timeout: prevent Flask from caching data archive
+            return send_file(data_file, as_attachment=True, cache_timeout=-1)
 
     @app.route('/manage/<study>/delete/', methods=['GET', 'POST'])
     def delete_study(study):
