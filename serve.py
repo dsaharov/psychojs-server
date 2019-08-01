@@ -68,7 +68,7 @@ def init():
         os.makedirs(DATA_PATH)
 
     if not os.path.exists(STUDY_PATH):
-        log('Creating study directory at {}'.format(STUDY_PATHSTUDY_PATH))
+        log('Creating study directory at {}'.format(STUDY_PATH))
         os.makedirs(STUDY_PATH)
 
     exp_server = ExperimentServer(DATA_PATH, STUDY_PATH)
