@@ -2,7 +2,7 @@
 
 Serves and manages PsychoPy experiments exported as html.
 
-Requires: Python 3 with libraries Flask and Waitress installed.
+Requires: Python 3.6 with libraries Flask and Waitress installed.
 
 **To start the server** run *serve.py*.
 
@@ -18,6 +18,8 @@ The default port is 8080. If you need to change the server port, edit this file.
 | \/manage\/new\/ | Lets you create a new study. Study name should be unique and contain no special characters. | Yes |
 | \/manage\/\<study\>\/ | Options for editing and deleting a specific study | Yes |
 | \/manage\/\<study\>\/delete\/ | Options for deleting a study and its collected data | Yes |
+| \/manage\/\<study\>\/invite\/ | Generates one-session participant codes for giving access a study | Yes |
+| \/participate\/<code\> | Uses a participant code to access a study | No |
 | \/study\/\<study\>\/ | Runs the study in your browser | Depends on settings |
 
 **Creating and editing studies**
@@ -26,3 +28,13 @@ When creating or uploading a new version of a study, select the *html folder* ge
 
 If you get a *missing resource error*, make sure that the *html folder* contains a folder called *resources*, and that this
 folder contains all the resources you use in your PsychoPy study.
+
+**Running studies**
+
+When you first create a study, it will show up as *inactive* and will not accept subjects. You can activate it on the manage page for the specific study. Active studies can be deactivated on this same page.
+
+If the server is set to deny unauthorized access to studies, you can give a subject access to one session of a study by
+generating an *invite code* from the study's manage page. The option will give you a URL with the code already entered, which
+you can then send to the subject.
+
+NOTE: Deactivating a study will revoke all of its current invite codes.
