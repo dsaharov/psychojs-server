@@ -16,6 +16,7 @@ SECRET_KEY = hashlib.sha224(
     str(datetime.datetime.now()).encode(encoding='UTF-8')
 ).hexdigest()
 DATA_PATH = './data/'
+STUDY_PATH = './study/'
 USERS = {
     'admin': {
         'password': 'default',
@@ -54,7 +55,7 @@ def init():
             permission_fn=user_can_manage
         )
     def study_access_allowed(study):
-        if not exp_server.has_study(study):
+        if not exp_server.study_available(study):
             return False
         if ALLOW_UNAUTHED_STUDY_ACCESS:
             return True
@@ -62,12 +63,16 @@ def init():
             permission_fn=user_can_access_study(study)
         )
 
-    exp_server = ExperimentServer(DATA_PATH)
-    exp_server.load_experiments()
-
     if not os.path.exists(DATA_PATH):
         log('Creating data directory at {}'.format(DATA_PATH))
         os.makedirs(DATA_PATH)
+
+    if not os.path.exists(STUDY_PATH):
+        log('Creating study directory at {}'.format(STUDY_PATHSTUDY_PATH))
+        os.makedirs(STUDY_PATH)
+
+    exp_server = ExperimentServer(DATA_PATH, STUDY_PATH)
+    exp_server.load_experiments()
 
     @app.route('/manage/logout')
     def logout():
@@ -92,10 +97,43 @@ def init():
                 message = str(e)
         return render_template(
             'manage_study.html',
-            study=study,
+            study=exp_server.get_experiment(study),
             user=auth.get_authed_user(),
             message=message
         )
+
+    @app.route('/manage/<study>/activate')
+    def activate_study(study):
+        if not admin_access_allowed(study=study):
+            abort(404)
+        exp = exp_server.get_experiment(study)
+        message = 'Study is already active!'
+        if not exp.is_active():
+            exp.start_run()
+            message = 'Study is now active.'
+        return render_template(
+            'manage_study.html',
+            study=exp,
+            user=auth.get_authed_user(),
+            message=message
+        )
+
+    @app.route('/manage/<study>/deactivate')
+    def deactivate_study(study):
+        if not admin_access_allowed(study=study):
+            abort(404)
+        exp = exp_server.get_experiment(study)
+        message = 'Study was not running!'
+        if exp.is_active():
+            exp.cancel_run()
+            message = 'Study is now inactive.'
+        return render_template(
+            'manage_study.html',
+            study=exp,
+            user=auth.get_authed_user(),
+            message=message
+        )
+
     @app.route('/manage/<study>/data/', methods=['GET'])
     def download_study_data(study):
         if not admin_access_allowed(study=study):
@@ -117,7 +155,7 @@ def init():
             message = '"Confirm" was not checked, so no action was taken.'
         return render_template(
             'delete_study.html',
-            study=study,
+            study=exp_server.get_experiment(study),
             user=auth.get_authed_user(),
             message=message
         )
@@ -205,7 +243,10 @@ def init():
             return render_template(
                 'manage.html',
                 user=auth.get_authed_user(),
-                studies=exp_server.experiment_names()
+                studies=sorted(
+                    exp_server.get_experiments(),
+                    key=lambda e:0 if e.is_active() else 1
+                ),
             )
         else:
             return render_template('login.html')

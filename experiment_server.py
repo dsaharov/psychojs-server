@@ -14,26 +14,30 @@ EXPERIMENT_SESSION_TIMEOUT = datetime.timedelta(hours=2)
 
 class ExperimentSession():
 
-    def __init__(self, study, token, data_path, save_data_on_incomplete):
+    def __init__(self, run, token, data_path, save_data_on_incomplete):
         self.token = token
-        self.study = study
+        self.run = run
         self.data_path = data_path
         self.save_data_on_incomplete = save_data_on_incomplete
         self.data = {}
         self.start_time = datetime.datetime.now()
+        self.has_data = False
+        self.is_complete = False
 
-    def log(self, msg):
-        log(msg, study=self.study, token=self.token)
+    def log(self, msg, **kwargs):
+        self.run.log(msg, token=self.token, **kwargs)
 
-    def accept_data(self, key, value):
+    def accept_data(self, key, value, save_format):
+        self.log('Incoming data, format {}'.format(save_format))
         self.data[key] = value
+        self.has_data = True
 
     def save_data(self):
         for key in self.data:
             if any([s in key for s in ['..', '/', '~']]):
                 self.log('Skipping {}'.format(key))
                 continue
-            target_file = '{}{}'.format(
+            target_file = os.path.join(
                 self.data_path,
                 key
             )
@@ -41,54 +45,70 @@ class ExperimentSession():
                 f.write(self.data[key])
             self.log('Wrote {}'.format(key))
 
-    def close(self, session_completed):
-        if session_completed:
-            self.log('Session complete, saving data...')
+    def close(self, session_completed=False):
+        self.log('Closing session ({})'.format(
+            'complete' if session_completed else 'incomplete'
+        ))
+        self.is_complete = session_completed
+        if self.has_data and \
+                (session_completed or self.save_data_on_incomplete):
+            self.log('Saving data...')
             self.save_data()
-        else:
-            self.log('Session incomplete.')
-            if self.save_data_on_incomplete:
-                self.log('Saving data anyway...')
-                self.save_data()
+        self.run.on_session_closed(self)
 
-class PsychoJsExperiment():
+class ExperimentRun():
+    # A run is one deployment of an experiment
+    # It is expected to yield N sessions of data
+    # There might be no limit to the number of sessions
+    # Each run should store its data seperately
+    # The run might be closed at any time by the researcher
 
-    def __init__(self, id, data_path, study_path):
+    def __init__(self, exp, id, data_path, size=None):
+        self.experiment = exp
         self.id = id
+        self.size = size
+        self.num_sessions = 0
         self.data_path = data_path
-        self.study_path = study_path
+        # Sessions
         self.next_session_token = 1
         self.sessions = {}
-        self.config = {}
         self.callbacks = {}
 
-    def load_config(self):
-        self.config = {
-            'experiment': {
-                'name': self.id,
-                'fullpath': ';;;;' #TODO: unused
-            },
-            'psychoJsManager': { 'URL': './server/' },
-            'saveFormat': 'CSV' #TODO: unused
-        }
     def log(self, msg, **kwargs):
-        log(msg, study=self.id, **kwargs)
+        self.experiment.log(msg, run=self.id, **kwargs)
+
+    def get_remaining_sessions(self):
+        if self.size is None:
+            return None
+        return self.size - self.num_sessions
 
     def get_next_session_token(self):
-        token = self.next_session_token
-        self.next_session_token += 1
-        return str(token)
+        return str(self.num_sessions + 1)
 
-    def close_session(self, token, session_completed=False):
-        self.sessions[token].close(session_completed)
+    def finish_run(self):
+        self.log('Run complete')
+        self.experiment.on_run_finished(self)
+
+    def on_session_closed(self, session):
+        if session.has_data:
+            self.num_sessions += 1
+        token = session.token
         del self.sessions[token]
         if token in self.callbacks:
             self.callbacks[token]()
             del self.callbacks[token]
+        if self.size is not None and self.get_remaining_sessions() == 0:
+            self.finish_run()
+
+    def has_session(self, token):
+        return token in self.sessions
+
+    def get_session(self, token):
+        return self.sessions[token]
 
     def close_all_sessions(self):
-        for token in self.sessions:
-            self.close_session(token)
+        for session in list(self.sessions.values()):
+            session.close()
 
     def timeout_old_sessions(self):
         now = datetime.datetime.now()
@@ -99,40 +119,124 @@ class PsychoJsExperiment():
         ]
         for token in expired_sessions:
             self.log('Closing expired session.', token=token)
-            self.close_session(token)
+            self.sessions[token].close()
 
     def open_session(self, finished_callback=None):
         token = self.get_next_session_token()
         self.log('Opening session', token=token)
         experiment_session = ExperimentSession(
-            self.id,
+            self,
             token,
             self.data_path,
             save_data_on_incomplete=True #TODO: load from settings
         )
+        self.sessions[token] = experiment_session
         if finished_callback is not None:
             self.callbacks[token] = finished_callback
-        self.sessions[token] = experiment_session
         return token
 
-    def accept_data(self, key, data, token):
-        self.sessions[token].accept_data(key, data)
+    def cancel(self):
+        self.close_all_sessions()
+        self.finish_run()
+
+
+class PsychoJsExperiment():
+
+    def __init__(self, server, id, data_path):
+        self.server = server
+        self.id = id
+        self.config = {}
+        # Filesystem location
+        self.data_path = data_path
+        # Current run
+        self.next_run_id = 1 #TODO: this needs to persist (key for data)
+        self.run = None
+
+    def log(self, msg, **kwargs):
+        self.server.log(msg, study=self.id, **kwargs)
+
+    def load_config(self):
+        self.config = {
+            'experiment': {
+                'name': self.id,
+                'fullpath': ';;;;' #TODO: unused
+            },
+            'psychoJsManager': { 'URL': './server/' },
+            'saveFormat': 'CSV' #TODO: unused
+        }
+
+    def is_active(self):
+        return self.run is not None
 
     def has_session(self, token):
-        return token in self.sessions
+        if not self.is_active():
+            return False
+        return self.run.has_session(token)
+
+    def get_session(self, token):
+        if not self.is_active():
+            raise ValueError()
+        return self.run.get_session(token)
+
+    def timeout_old_sessions(self):
+        if not self.is_active():
+            raise ValueError()
+        self.run.timeout_old_sessions()
+
+    def get_next_run_id(self):
+        id = self.next_run_id
+        self.next_run_id += 1
+        return id
+
+    def start_run(self, size=None):
+        if self.is_active():
+            raise ValueError()
+        while True:
+            id = self.get_next_run_id()
+            run_data_path = os.path.join(self.data_path, str(id))
+            #TODO: HACK
+            if not os.path.exists(run_data_path):
+                break
+        self.log('Starting run {}'.format(id))
+        self.run = ExperimentRun(
+            self,
+            id,
+            run_data_path,
+            size
+        )
+        os.makedirs(run_data_path)
+
+    def cancel_run(self):
+        if not self.is_active():
+            raise ValueError()
+        self.run.cancel()
+
+    def open_session(self, finished_callback=None):
+        if not self.is_active():
+            raise ValueError()
+        return self.run.open_session(finished_callback=finished_callback)
+
+    def get_remaining_sessions(self):
+        if not self.is_active():
+            return 0
+        return self.run.get_remaining_sessions()
+
+    def on_run_finished(self, run):
+        self.run = None
 
 class ExperimentServer():
 
-    def __init__(self, data_path):
+    def __init__(self, data_path, study_path):
         self.experiments = {}
         self.data_path = data_path
         self.participant_codes = {}
+        self.study_path = study_path
 
     def log(self, msg, **kwargs):
         log(msg, **kwargs)
 
     def add_study(self, study):
-        study_path = './study/{}/'.format(study)
+        study_path = os.path.join(self.study_path, study)
         if not os.path.exists(study_path):
             self.log('New study folder: {}'.format(study_path), study=study)
             os.makedirs(study_path)
@@ -143,9 +247,9 @@ class ExperimentServer():
             self.log('New data folder: {}'.format(data_path), study=study)
             os.makedirs(data_path)
         self.experiments[study] = PsychoJsExperiment(
+            server=self,
             id=study,
-            data_path=data_path,
-            study_path=study_path
+            data_path=data_path
         )
         self.experiments[study].load_config()
 
@@ -191,7 +295,8 @@ class ExperimentServer():
         log('Removing study "{}"'.format(study), study=study)
         exp = self.experiments[study]
         del self.experiments[study]
-        exp.close_all_sessions()
+        if exp.is_active():
+            exp.cancel_run()
         shutil.rmtree(os.path.join('study',study))
         if delete_data:
             shutil.rmtree(os.path.join(self.data_path, study))
@@ -231,11 +336,12 @@ class ExperimentServer():
             self.add_study(study)
             self.log('Added "{}"'.format(study))
 
-    def has_study(self, study):
-        return study in self.experiments
+    def study_available(self, study):
+        return study in self.experiments and \
+            self.experiments[study].is_active()
 
     def get_path(self, study):
-        return self.experiments[study].study_path
+        return os.path.join(self.study_path, study)
 
     def get_config(self, study):
         return self.experiments[study].config
@@ -246,34 +352,36 @@ class ExperimentServer():
         exp.log('Request: {}'.format(command))
         response = {}
         token = request.values.get('token', None)
+        if token is not None:
+            session = exp.get_session(token)
         if command == 'open_session':
             exp.timeout_old_sessions()
             if user in self.participant_codes:
-                session_token = self.participant_codes[user]['session']
+                token = self.participant_codes[user]['session']
             else:
-                session_token = exp.open_session()
-            response['token'] = session_token
+                token = exp.open_session()
+            response['token'] = token
             #TODO: unusued parameters
             # experiment_full_path = request.values['experimentFullPath']
         elif command == 'close_session':
-            self.log('Closing session', token=token)
             #TODO: unusued parameters
             # experiment_full_path = request.values['experimentFullPath']
             session_completed = request.values['isCompleted'] == 'true'
-            exp.close_session(token, session_completed)
+            session.close(session_completed)
         elif command == 'save_data':
-            exp.log('Incoming data', token=token)
             #TODO: unusued parameters
             # experiment_full_path = request.values['experimentFullPath']
             save_format = request.values['saveFormat']
-            exp.log('Save format is "{}"'.format(save_format), token=token)
             key = request.values['key']
             data = request.values['value']
-            exp.accept_data(key, data, token)
+            session.accept_data(key, data, save_format)
         return response
 
-    def experiment_names(self):
-        return self.experiments.keys()
+    def get_experiments(self):
+        return self.experiments.values()
+
+    def get_experiment(self, study):
+        return self.experiments[study]
 
     def add_participant_code(self, code, study, callback):
         self.participant_codes[code] = {

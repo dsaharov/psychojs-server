@@ -17,10 +17,13 @@
       <ul class="study-list">
       {% for study in studies %}
         <li class="study">
-          {{ study }}
+          {{ study.id }}
+          <span class="study-status">
+          {{ 'active' if study.is_active() else 'inactive' }}
+          </span>
           <span class="list-options">
-          <a href="{{ url_for('send_study', study=study) }}" class="button">view</a>
-          <a href="{{ url_for('manage_specific_study', study=study) }}" class="button">edit</a>
+          <a href="{{ url_for('send_study', study=study.id) }}" class="button">view</a>
+          <a href="{{ url_for('manage_specific_study', study=study.id) }}" class="button">edit</a>
           </span>
         </li>
       {% endfor %}

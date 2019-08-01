@@ -1,6 +1,6 @@
 <html>
   <head>
-    <title>Study Manager [{{ study }}]</title>
+    <title>Study Manager [{{ study.id }}]</title>
     <link rel="stylesheet" href="{{url_for('send_css',path='manage.css')}}" />
   </head>
   <body>
@@ -16,9 +16,19 @@
       {% if message is not none %}
       <div class="message">{{ message }}</div>
       {% endif %}
-      <h2>Options - {{ study }}</h2>
-      <a class="get-invite-code button" href="{{ url_for('create_participant_code', study=study) }}">Get Invite Code</a><br/>
-      <a class="download-data button" href="./data/" download>Download Data</a>
+      <h2>{{ study.id }}</h2>
+      Current status: {{ 'active' if study.is_active() else 'inactive'}}
+      {% if study.is_active() %}
+      <span class="sessions-remaining">{{'No session limit set.' if study.get_remaining_sessions() is none else '{} sessions left'.format(study.get_remaining_sessions())}}</span>
+      {% endif %}
+      <h3>Options</h3>
+      {% if study.is_active() %}
+      <a class="get-invite-code button" href="{{ url_for('create_participant_code', study=study.id) }}">Get Invite Code</a>
+      <a class="deactivate-study button" href="{{url_for('deactivate_study', study=study.id)}}">Deactivate</a>
+      {% else %}
+      <a class="activate-study button" href="{{url_for('activate_study', study=study.id)}}">Activate</a>
+      {% endif %}
+      <a class="download-data button" href="{{url_for('download_study_data', study=study.id)}}" download>Download Data</a>
       <h3>Updating study files</h3>
       <form action="./" method="POST" enctype="multipart/form-data" >
         Html folder
@@ -28,7 +38,7 @@
       </form>
       <br/>
       <br/>
-      <a style="color:red; font-size:10px;" class="delete-study button" href="{{ url_for('delete_study', study=study) }}">delete this study</a>
+      <a style="color:red; font-size:10px;" class="delete-study button" href="{{ url_for('delete_study', study=study.id) }}">delete this study</a>
     </div>
     <div class="content-slice footer">
     </div>
