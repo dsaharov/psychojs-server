@@ -223,6 +223,19 @@ class PsychoJsExperiment():
             return 0
         return self.run.get_remaining_sessions()
 
+    def get_total_sessions(self):
+        if not self.is_active():
+            return 0
+        return self.run.size
+
+    def get_num_sessions(self):
+        if not self.is_active():
+            return 0
+        return self.run.num_sessions
+
+    def has_session_limit(self):
+        return self.get_remaining_sessions() is not None
+
     def on_run_finished(self, run):
         self.run = None
 

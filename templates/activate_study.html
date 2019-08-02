@@ -1,0 +1,32 @@
+<html>
+  <head>
+    <title>Study Manager [{{ study.id }}]</title>
+    <link rel="stylesheet" href="{{url_for('send_css',path='manage.css')}}" />
+  </head>
+  <body>
+    <div class="content">
+    <div class="content-slice header columns">
+      <div class="spread">
+        <div class="back"><a href="{{ url_for('manage_specific_study', study=study.id) }}">Back to "{{ study.id }}"</a></div>
+        <div class="user">Logged in as <i>{{ user }}</i> [<a class="logout" href="{{ url_for('logout') }}">logout</a>]</div>
+      </div>
+      <div class="title">Study Manager</div>
+    </div>
+    <div class="content-slice middle columns">
+      {% if message is not none %}
+      <div class="message">{{ message }}</div>
+      {% endif %}
+      <h2>Activate <i>{{ study.id }}</i> ?</h2>
+      <form action="" method="POST">
+        Number of participant sessions:
+        <input type="text" name="numSessions" value="unlimited"></input>
+        <br/>
+        <small>Enter <i>unlimited</i> for no session limit.</small>
+        <input type="submit" value="Activate"></input>
+      </form>
+    </div>
+    <div class="content-slice footer">
+    </div>
+    </div>
+  </body>
+</html>

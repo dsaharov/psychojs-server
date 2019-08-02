@@ -99,17 +99,35 @@ def init():
             message=message
         )
 
-    @app.route('/manage/<study>/activate')
+    @app.route('/manage/<study>/activate', methods=['GET', 'POST'])
     def activate_study(study):
         if not admin_access_allowed(study=study):
             abort(404)
         exp = exp_server.get_experiment(study)
-        message = 'Study is already active!'
-        if not exp.is_active():
-            exp.start_run()
-            message = 'Study is now active.'
+        message = None
+
+        if exp.is_active():
+            message = 'Study is already active!'
+        elif request.method == 'POST':
+            size = request.values.get('numSessions', None)
+            if size is not None:
+                try:
+                    if size == 'unlimited':
+                        size = None
+                    else:
+                        try:
+                            size = int(size)
+                            if size <= 0:
+                                raise ValueError()
+                        except:
+                            raise ValueError(
+                                'Please enter a positive whole number.')
+                    exp.start_run(size=size)
+                    return redirect(url_for('manage_specific_study', study=study))
+                except Exception as e:
+                    message = str(e)
         return render_template(
-            'manage_study.html',
+            'activate_study.html',
             study=exp,
             user=auth.get_authed_user(),
             message=message

@@ -19,14 +19,18 @@
       <h2>{{ study.id }}</h2>
       Current status: {{ 'active' if study.is_active() else 'inactive'}}
       {% if study.is_active() %}
-      <span class="sessions-remaining">{{'No session limit set.' if study.get_remaining_sessions() is none else '{} sessions left'.format(study.get_remaining_sessions())}}</span>
+      <span class="sessions-remaining">{{(
+        'Sessions remaining: {} / {}'.format(
+          study.get_remaining_sessions(), study.get_total_sessions()
+        ) if study.has_session_limit() else 'No session limit set.'
+      )}}</span>
       {% endif %}
       <h3>Options</h3>
       {% if study.is_active() %}
       <a class="get-invite-code button" href="{{ url_for('create_participant_code', study=study.id) }}">Get Invite Code</a>
       <a class="deactivate-study button" href="{{url_for('deactivate_study', study=study.id)}}">Deactivate</a>
       {% else %}
-      <a class="activate-study button" href="{{url_for('activate_study', study=study.id)}}">Activate</a>
+      <a class="activate-study button" href="{{url_for('activate_study', study=study.id)}}">Activate...</a>
       {% endif %}
       <a class="download-data button" href="{{url_for('download_study_data', study=study.id)}}" download>Download Data</a>
       <h3>Updating study files</h3>

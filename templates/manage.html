@@ -21,6 +21,14 @@
           <span class="study-status">
           {{ 'active' if study.is_active() else 'inactive' }}
           </span>
+          {% if study.is_active() %}
+          <span class="sessions-remaining">{{(
+            'sessions: {} / {}'.format(
+              study.get_num_sessions(),
+              study.get_total_sessions() if study.has_session_limit()
+              else 'unlimited')
+          )}}</span>
+          {% endif %}
           <span class="list-options">
           <a href="{{ url_for('send_study', study=study.id) }}" class="button">view</a>
           <a href="{{ url_for('manage_specific_study', study=study.id) }}" class="button">edit</a>
