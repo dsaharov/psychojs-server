@@ -6,15 +6,13 @@ from experiment_server import ExperimentServer
 import json
 import os
 from logger import log
-import hashlib
 import datetime
 from auth import SimpleSessionAuth, Lockout
+from secrets import token_urlsafe
 
 
 # Generate a key for signing session cookies
-SECRET_KEY = hashlib.sha224(
-    str(datetime.datetime.now()).encode(encoding='UTF-8')
-).hexdigest()
+SECRET_KEY = token_urlsafe()
 DATA_PATH = './data/'
 STUDY_PATH = './study/'
 USERS = {
