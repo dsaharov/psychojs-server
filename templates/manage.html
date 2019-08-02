@@ -30,7 +30,9 @@
           )}}</span>
           {% endif %}
           <span class="list-options">
+          {% if study.is_active() %}
           <a href="{{ url_for('send_study', study=study.id) }}" class="button">view</a>
+          {% endif %}
           <a href="{{ url_for('manage_specific_study', study=study.id) }}" class="button">edit</a>
           </span>
         </li>
