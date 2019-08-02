@@ -345,12 +345,12 @@ class ExperimentServer():
             yield data_file_path
 
     def load_experiments(self):
-        if not os.path.exists('./study/'):
+        if not os.path.exists(self.study_path):
             self.log('Creating study directory')
-            os.makedirs('./study/')
+            os.makedirs(self.study_path)
 
         self.log('Registering experiments...')
-        for study in os.listdir('./study/'):
+        for study in os.listdir(self.study_path):
             self.add_study(study)
             self.log('Added "{}"'.format(study))
 
