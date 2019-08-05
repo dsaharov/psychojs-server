@@ -24,10 +24,15 @@
           study.get_remaining_sessions(), study.get_total_sessions()
         ) if study.has_session_limit() else 'No session limit set.'
       )}}</span>
+      <span class="access-type">
+        Accessible by: {{ study.get_access_type() }}
+      </span>
       {% endif %}
       <h3>Options</h3>
       {% if study.is_active() %}
+      {% if study.get_access_type() == 'invite-only' %}
       <a class="get-invite-code button" href="{{ url_for('create_participant_code', study=study.id) }}">Get Invite Code</a>
+      {% endif %}
       <a class="deactivate-study button" href="{{url_for('deactivate_study', study=study.id)}}">Deactivate</a>
       {% else %}
       <a class="activate-study button" href="{{url_for('activate_study', study=study.id)}}">Activate...</a>

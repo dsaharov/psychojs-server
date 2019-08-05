@@ -52,7 +52,8 @@ def init():
     def study_access_allowed(study):
         if not exp_server.study_available(study):
             return False
-        if ALLOW_UNAUTHED_STUDY_ACCESS:
+        if ALLOW_UNAUTHED_STUDY_ACCESS or \
+                exp_server.get_experiment(study).get_access_type() == 'anyone':
             return True
         return auth.is_session_authenticated(
             permission_fn=user_can_access_study(study)
@@ -108,7 +109,8 @@ def init():
             message = 'Study is already active!'
         elif request.method == 'POST':
             size = request.values.get('numSessions', None)
-            if size is not None:
+            access_type = request.values.get('accessType', None)
+            if size is not None and access_type is not None:
                 try:
                     if size == 'unlimited':
                         size = None
@@ -120,7 +122,9 @@ def init():
                         except:
                             raise ValueError(
                                 'Please enter a positive whole number.')
-                    exp.start_run(size=size)
+                    if access_type not in ['anyone', 'invite-only']:
+                        raise ValueError('Unknown access type')
+                    exp.start_run(size=size, access_type=access_type)
                     return redirect(url_for('manage_specific_study', study=study))
                 except Exception as e:
                     message = str(e)
@@ -177,6 +181,9 @@ def init():
     @app.route('/manage/<study>/invite/')
     def create_participant_code(study):
         if not admin_access_allowed(study=study):
+            abort(404)
+        exp = exp_server.get_experiment(study)
+        if not exp.is_active() or exp.get_access_type() != 'invite-only':
             abort(404)
         try:
             username = auth.create_temporary_user(

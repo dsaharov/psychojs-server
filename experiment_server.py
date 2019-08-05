@@ -63,16 +63,18 @@ class ExperimentRun():
     # Each run should store its data seperately
     # The run might be closed at any time by the researcher
 
-    def __init__(self, exp, id, data_path, size=None):
+    def __init__(self, exp, id, data_path, size=None, access_type='invite-only'):
         self.experiment = exp
         self.id = id
-        self.size = size
-        self.num_sessions = 0
         self.data_path = data_path
         # Sessions
         self.next_session_token = 1
         self.sessions = {}
         self.callbacks = {}
+        # Access
+        self.size = size
+        self.num_sessions = 0
+        self.access_type = access_type
 
     def log(self, msg, **kwargs):
         self.experiment.log(msg, run=self.id, **kwargs)
@@ -168,6 +170,11 @@ class PsychoJsExperiment():
     def is_active(self):
         return self.run is not None
 
+    def get_access_type(self):
+        if not self.is_active():
+            raise ValueError()
+        return self.run.access_type
+
     def has_session(self, token):
         if not self.is_active():
             return False
@@ -188,7 +195,7 @@ class PsychoJsExperiment():
         self.next_run_id += 1
         return id
 
-    def start_run(self, size=None):
+    def start_run(self, size=None, access_type='invite-only'):
         if self.is_active():
             raise ValueError()
         while True:
@@ -204,7 +211,8 @@ class PsychoJsExperiment():
             self,
             id,
             run_data_path,
-            size
+            size,
+            access_type
         )
         os.makedirs(run_data_path)
 
