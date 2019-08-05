@@ -13,9 +13,29 @@
       <div class="title">Study Manager</div>
     </div>
     <div class="content-slice middle columns">
-      <h2>Invite code for the "{{ study }}" study</h2>
-      <div>This url gives access to <i>one run</i> of this study.</div>
-      <a class="invite-code" href="{{ url_for('participate_code', code=code, _external=True) }}">{{ url_for('participate_code', code=code, _external=True) }}</a>
+      {% if message is not none %}
+      <div class="message">{{ message }}</div>
+      {% endif %}
+      <h2>Invite codes for the <i>{{ study }}</i> study</h2>
+      <ul class="invite-code-list">
+        {% for code in codes %}
+        <li class="invite-code">
+        <a href="{{ url_for('participate_code', code=code['code'], _external=True) }}">{{ code['code'] }}</a>
+        <span>One session</span>
+        <span>Expires {{ code['timeout'] }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      <h3>Generate a new code</h3>
+      <form action="" method="POST">
+        Code duration:
+        <select name="timeout">
+        <option value="hour">One hour</option>
+        <option value="day">One day</option>
+        <option value="week">One week</option>
+        </select>
+        <input type="submit" value="Generate"></input>
+      </form>
     </div>
     <div class="content-slice footer">
     </div>

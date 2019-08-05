@@ -455,3 +455,15 @@ class ExperimentServer():
             props['session'] = session_token
             self.session_code_map[(study, session_token)] = code
         return study
+
+    def get_participant_codes(self, study):
+        codes = []
+        for code in self.participant_codes:
+            props = self.participant_codes[code]
+            if props['study'] == study:
+                code_obj = {
+                    'code': code
+                }
+                code_obj.update(props)
+                codes.append(code_obj)
+        return codes

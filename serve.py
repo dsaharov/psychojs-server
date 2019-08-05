@@ -178,40 +178,51 @@ def init():
             message=message
         )
 
-    @app.route('/manage/<study>/invite/')
+    @app.route('/manage/<study>/invite/', methods=['GET', 'POST'])
     def create_participant_code(study):
         if not admin_access_allowed(study=study):
             abort(404)
         exp = exp_server.get_experiment(study)
         if not exp.is_active() or exp.get_access_type() != 'invite-only':
             abort(404)
-        try:
-            username = auth.create_temporary_user(
-                properties={
-                    'permissions': {
-                        'studies': [study]
-                    }
-                },
-                readable_name=True
-            )
-            def remove_temp_user():
-                log('Removing temp user',code=username)
-                auth.delete_user(username)
+        message = None
+        if request.method == 'POST':
+            try:
+                try:
+                    timeout = datetime.datetime.now() + {
+                        'hour': datetime.timedelta(hours=1),
+                        'day': datetime.timedelta(days=1),
+                        'week': datetime.timedelta(weeks=1)
+                    }[request.values['timeout']]
+                except:
+                    raise ValueError('Invalid timeout specified.')
+                username = auth.create_temporary_user(
+                    properties={
+                        'permissions': {
+                            'studies': [study]
+                        }
+                    },
+                    readable_name=True
+                )
+                def remove_temp_user():
+                    log('Removing temp user',code=username)
+                    auth.delete_user(username)
 
-            exp_server.add_participant_code(
-                username,
-                study,
-                on_expire=remove_temp_user,
-                timeout=datetime.datetime.now() + datetime.timedelta(hours=2)
-            )
-        except:
-            abort(404)
-
+                exp_server.add_participant_code(
+                    username,
+                    study,
+                    on_expire=remove_temp_user,
+                    timeout=timeout
+                )
+            except ValueError as e:
+                message=str(e)
+        codes = exp_server.get_participant_codes(study)
         return render_template(
             'invite_code.html',
             study=study,
             user=auth.get_authed_user(),
-            code=username
+            codes=codes,
+            message=message
         )
 
     @app.route('/participate/<code>')

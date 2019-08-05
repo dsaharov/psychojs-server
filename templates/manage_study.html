@@ -31,7 +31,7 @@
       <h3>Options</h3>
       {% if study.is_active() %}
       {% if study.get_access_type() == 'invite-only' %}
-      <a class="get-invite-code button" href="{{ url_for('create_participant_code', study=study.id) }}">Get Invite Code</a>
+      <a class="get-invite-code button" href="{{ url_for('create_participant_code', study=study.id) }}">Invite Codes...</a>
       {% endif %}
       <a class="deactivate-study button" href="{{url_for('deactivate_study', study=study.id)}}">Deactivate</a>
       {% else %}

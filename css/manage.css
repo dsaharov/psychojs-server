@@ -86,31 +86,32 @@ body{
   align-items:center;
 }
 
-.invite-code{
-  border:1px dotted black;
+.invite-code-list {
+  min-width: 60%;
+}
+
+li {
+  background-color: #EAEAEA;
+  border-left: 1px dotted gray;
+  border-right: 1px dotted gray;
+  border-top: 1px dotted gray;
   padding:10px;
-  margin-top:20px;
-  display:inline-block;
+  display:flex;
+  justify-content:space-between;
+}
+li:nth-of-type(even) {
+  background-color: #E4E4E4;
+}
+li:last-of-type {
+ border-bottom: 1px dotted gray;
 }
 
 .study-list {
   min-width:60%;
 }
-.study:nth-of-type(n+2) {
- border-top: 1px dotted gray;
-}
+
 .study {
-  background-color: #EAEAEA;
-}
-.study:nth-of-type(even) {
-  background-color: #E4E4E4;
-}
-.study {
-  padding: 10px;
   min-height:3.5em;
-  display: flex;
-  justify-content:space-between;
-  border: 1px dotted gray;
 }
 .study:hover {
   font-weight:bold;
