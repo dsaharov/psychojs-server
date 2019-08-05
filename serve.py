@@ -188,6 +188,11 @@ def init():
         message = None
         if request.method == 'POST':
             try:
+                if 'revoke-codes' in request.values:
+                    exp_server.revoke_participant_codes(study)
+                    #TODO: HACK for convenience
+                    raise ValueError(
+                        'Revoked all invite codes for {}'.format(study))
                 try:
                     timeout = datetime.datetime.now() + {
                         'hour': datetime.timedelta(hours=1),

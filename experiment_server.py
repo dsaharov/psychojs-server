@@ -437,6 +437,14 @@ class ExperimentServer():
         except KeyError:
             pass # harmless
 
+    def remove_code_and_session(self, code):
+        props = self.participant_codes[code]
+        if 'session' in props:
+            self.experiments[props['study']].get_session(
+                props['session']).close()
+        else:
+            self.remove_participant_code(code)
+
     def activate_participant_code(self, code):
         props = self.participant_codes[code]
         study = props['study']
@@ -444,10 +452,7 @@ class ExperimentServer():
         if 'timeout' in props and \
                 datetime.datetime.now() >= props['timeout']:
             self.log('Participant code is expired', code=code)
-            if 'session' in props:
-                exp.get_session(props['session']).close()
-            else:
-                self.remove_participant_code(code)
+            self.remove_code_and_session(code)
             raise ValueError()
         self.log('Participant code accessed', code=code)
         if 'session' not in props:
@@ -467,3 +472,12 @@ class ExperimentServer():
                 code_obj.update(props)
                 codes.append(code_obj)
         return codes
+
+    def revoke_participant_codes(self, study):
+        self.log('Revoking all participant codes', study=study)
+        target_codes = [
+            code for code in self.participant_codes if
+                self.participant_codes[code]['study'] == study
+        ]
+        for code in target_codes:
+            self.remove_code_and_session(code)

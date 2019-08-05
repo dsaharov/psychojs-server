@@ -17,15 +17,23 @@
       <div class="message">{{ message }}</div>
       {% endif %}
       <h2>Invite codes for the <i>{{ study }}</i> study</h2>
-      <ul class="invite-code-list">
+      {% if codes|length > 0 %}
+        <ul class="invite-code-list">
         {% for code in codes %}
-        <li class="invite-code">
-        <a href="{{ url_for('participate_code', code=code['code'], _external=True) }}">{{ code['code'] }}</a>
-        <span>One session</span>
-        <span>Expires {{ code['timeout'] }}</span>
-        </li>
+          <li class="invite-code">
+          <a href="{{ url_for('participate_code', code=code['code'], _external=True) }}">{{ code['code'] }}</a>
+          <span>One session</span>
+          <span>Expires {{ code['timeout'] }}</span>
+          </li>
         {% endfor %}
-      </ul>
+        </ul>
+        <form action="" method="POST">
+          <input type="hidden" name="revoke-codes" />
+          <input type="submit" value="Revoke All Invite Codes"></input>
+        </form>
+        {% else %}
+        No active invite codes
+      {% endif %}
       <h3>Generate a new code</h3>
       <form action="" method="POST">
         Code duration:
