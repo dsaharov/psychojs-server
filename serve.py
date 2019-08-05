@@ -221,7 +221,7 @@ def init():
         codes = exp_server.get_participant_codes(study)
         return render_template(
             'invite_code.html',
-            study=study,
+            study=exp,
             user=auth.get_authed_user(),
             codes=codes
         )

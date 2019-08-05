@@ -1,13 +1,13 @@
 <html>
   <head>
-    <title>Study Manager [{{ study }}]</title>
+    <title>Study Manager [{{ study.id }}]</title>
     <link rel="stylesheet" href="{{url_for('send_css',path='manage.css')}}" />
   </head>
   <body>
     <div class="content">
     <div class="content-slice header columns">
       <div class="spread">
-        <div class="back"><a href="../">Back to "{{ study }}"</a></div>
+        <div class="back"><a href="{{ url_for('manage_specific_study', study=study.id) }}">Back to "{{ study.id }}"</a></div>
         <div class="user">Logged in as <i>{{ user }}</i> [<a class="logout" href="{{ url_for('logout') }}">logout</a>]</div>
       </div>
       <div class="title">Study Manager</div>
@@ -20,7 +20,7 @@
           {% endfor %}
         {% endif %}
       {% endwith %}
-      <h2>Invite codes for the <i>{{ study }}</i> study</h2>
+      <h2>Invite codes for the <i>{{ study.id }}</i> study</h2>
       {% if codes|length > 0 %}
         <ul class="invite-code-list">
         {% for code in codes %}
