@@ -197,10 +197,12 @@ def init():
             def remove_temp_user():
                 log('Removing temp user',code=username)
                 auth.delete_user(username)
+
             exp_server.add_participant_code(
                 username,
                 study,
-                callback=remove_temp_user
+                on_expire=remove_temp_user,
+                timeout=datetime.datetime.now() + datetime.timedelta(hours=2)
             )
         except:
             abort(404)
@@ -218,7 +220,6 @@ def init():
             study = exp_server.activate_participant_code(code)
         except:
             abort(404)
-        log('Participant code accessed', code=code)
         if not auth.check_add_auth(code):
             log('WARN: Code has no corresponding user', code=code)
             abort(404)

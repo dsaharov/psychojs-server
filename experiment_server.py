@@ -56,6 +56,7 @@ class ExperimentSession():
             self.save_data()
         self.run.on_session_closed(self)
 
+
 class ExperimentRun():
     # A run is one deployment of an experiment
     # It is expected to yield N sessions of data
@@ -70,7 +71,6 @@ class ExperimentRun():
         # Sessions
         self.next_session_token = 1
         self.sessions = {}
-        self.callbacks = {}
         # Access
         self.size = size
         self.num_sessions = 0
@@ -96,9 +96,7 @@ class ExperimentRun():
             self.num_sessions += 1
         token = session.token
         del self.sessions[token]
-        if token in self.callbacks:
-            self.callbacks[token]()
-            del self.callbacks[token]
+        self.experiment.on_session_closed(session)
         if self.size is not None and self.get_remaining_sessions() == 0:
             self.finish_run()
 
@@ -123,7 +121,7 @@ class ExperimentRun():
             self.log('Closing expired session.', token=token)
             self.sessions[token].close()
 
-    def open_session(self, finished_callback=None):
+    def open_session(self):
         token = self.get_next_session_token()
         self.log('Opening session', token=token)
         experiment_session = ExperimentSession(
@@ -133,8 +131,6 @@ class ExperimentRun():
             save_data_on_incomplete=True #TODO: load from settings
         )
         self.sessions[token] = experiment_session
-        if finished_callback is not None:
-            self.callbacks[token] = finished_callback
         return token
 
     def cancel(self):
@@ -221,10 +217,13 @@ class PsychoJsExperiment():
             raise ValueError()
         self.run.cancel()
 
-    def open_session(self, finished_callback=None):
+    def open_session(self):
         if not self.is_active():
             raise ValueError()
-        return self.run.open_session(finished_callback=finished_callback)
+        return self.run.open_session()
+
+    def on_session_closed(self, session):
+        self.server.on_session_closed(self, session)
 
     def get_remaining_sessions(self):
         if not self.is_active():
@@ -252,8 +251,10 @@ class ExperimentServer():
     def __init__(self, data_path, study_path):
         self.experiments = {}
         self.data_path = data_path
-        self.participant_codes = {}
         self.study_path = study_path
+        # Participant codes
+        self.participant_codes = {}
+        self.session_code_map = {}
 
     def log(self, msg, **kwargs):
         log(msg, **kwargs)
@@ -409,21 +410,48 @@ class ExperimentServer():
     def get_experiment(self, study):
         return self.experiments[study]
 
-    def add_participant_code(self, code, study, callback):
-        self.participant_codes[code] = {
-            'study': study,
-            'session': self.experiments[study].open_session(
-                finished_callback=callback
-            )
+    def add_participant_code(self, code, study, **kwargs):
+        code_props = {
+            'study': study
         }
+        code_props.update(kwargs)
+        self.participant_codes[code] = code_props
+
+    def remove_participant_code(self, code):
+        self.log('Removing participant code', code=code)
+        props = self.participant_codes[code]
+        if 'on_expire' in props:
+            props['on_expire']()
+        if 'session' in props:
+            del self.session_code_map[(props['study'], props['session'])]
+        del self.participant_codes[code]
+
+    def on_session_closed(self, experiment, session):
+        try:
+            key = (
+                experiment.id,
+                session.token
+            )
+            code = self.session_code_map[key]
+            self.remove_participant_code(code)
+        except KeyError:
+            pass # harmless
 
     def activate_participant_code(self, code):
-        params = self.participant_codes[code]
-        study = params['study']
+        props = self.participant_codes[code]
+        study = props['study']
         exp = self.experiments[study]
-        exp.timeout_old_sessions()
-        if not exp.has_session(params['session']):
+        if 'timeout' in props and \
+                datetime.datetime.now() >= props['timeout']:
             self.log('Participant code is expired', code=code)
-            del self.participant_codes[code]
+            if 'session' in props:
+                exp.get_session(props['session']).close()
+            else:
+                self.remove_participant_code(code)
             raise ValueError()
+        self.log('Participant code accessed', code=code)
+        if 'session' not in props:
+            session_token = exp.open_session()
+            props['session'] = session_token
+            self.session_code_map[(study, session_token)] = code
         return study
