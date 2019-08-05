@@ -135,17 +135,21 @@ def init():
             message=message
         )
 
-    @app.route('/manage/<study>/deactivate')
+    @app.route('/manage/<study>/deactivate', methods=['GET', 'POST'])
     def deactivate_study(study):
         if not admin_access_allowed(study=study):
             abort(404)
         exp = exp_server.get_experiment(study)
-        message = 'Study was not running!'
-        if exp.is_active():
+        if not exp.is_active():
+            abort(404)
+        message = None
+        if request.method == 'POST':
+            if request.values.get('revoke-codes', False):
+                exp_server.revoke_participant_codes(study)
             exp.cancel_run()
-            message = 'Study is now inactive.'
+            return redirect(url_for('manage_specific_study', study=study))
         return render_template(
-            'manage_study.html',
+            'deactivate_study.html',
             study=exp,
             user=auth.get_authed_user(),
             message=message
