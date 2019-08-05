@@ -13,9 +13,13 @@
       <div class="title">Study Manager</div>
     </div>
     <div class="content-slice middle columns">
-      {% if message is not none %}
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          {% for message in messages %}
       <div class="message">{{ message }}</div>
-      {% endif %}
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
       <h2>Invite codes for the <i>{{ study }}</i> study</h2>
       {% if codes|length > 0 %}
         <ul class="invite-code-list">

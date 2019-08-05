@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from waitress import serve
 from flask import Flask, send_from_directory, render_template, jsonify, \
-    request, abort, session, redirect, url_for, send_file
+    request, abort, session, redirect, url_for, send_file, flash
 from experiment_server import ExperimentServer
 import json
 import os
@@ -79,23 +79,21 @@ def init():
     def manage_specific_study(study):
         if not admin_access_allowed(study=study):
             abort(404)
-        message = None
         if 'newfiles' in request.files:
             try:
                 exp_server.update_study_files(
                     study,
                     request.files.getlist('newfiles')
                 )
-                message = 'Uploaded new version of "{}"'.format(
+                flash('Uploaded new version of "{}"'.format(
                     study
-                )
+                ))
             except Exception as e:
-                message = str(e)
+                flash(str(e))
         return render_template(
             'manage_study.html',
             study=exp_server.get_experiment(study),
-            user=auth.get_authed_user(),
-            message=message
+            user=auth.get_authed_user()
         )
 
     @app.route('/manage/<study>/activate', methods=['GET', 'POST'])
@@ -103,10 +101,8 @@ def init():
         if not admin_access_allowed(study=study):
             abort(404)
         exp = exp_server.get_experiment(study)
-        message = None
-
         if exp.is_active():
-            message = 'Study is already active!'
+            flash('Study is already active!')
         elif request.method == 'POST':
             size = request.values.get('numSessions', None)
             access_type = request.values.get('accessType', None)
@@ -125,14 +121,14 @@ def init():
                     if access_type not in ['anyone', 'invite-only']:
                         raise ValueError('Unknown access type')
                     exp.start_run(size=size, access_type=access_type)
+                    flash('Study is now active.')
                     return redirect(url_for('manage_specific_study', study=study))
                 except Exception as e:
-                    message = str(e)
+                    flash(str(e))
         return render_template(
             'activate_study.html',
             study=exp,
-            user=auth.get_authed_user(),
-            message=message
+            user=auth.get_authed_user()
         )
 
     @app.route('/manage/<study>/deactivate', methods=['GET', 'POST'])
@@ -142,17 +138,17 @@ def init():
         exp = exp_server.get_experiment(study)
         if not exp.is_active():
             abort(404)
-        message = None
         if request.method == 'POST':
             if request.values.get('revoke-codes', False):
                 exp_server.revoke_participant_codes(study)
+                flash('Revoked all invite codes.'.format(study))
             exp.cancel_run()
+            flash('Study is now inactive.')
             return redirect(url_for('manage_specific_study', study=study))
         return render_template(
             'deactivate_study.html',
             study=exp,
             user=auth.get_authed_user(),
-            message=message
         )
 
     @app.route('/manage/<study>/data/', methods=['GET'])
@@ -167,19 +163,17 @@ def init():
     def delete_study(study):
         if not admin_access_allowed(study=study):
             abort(404)
-        message = None
         if request.values.get('confirm', False):
             delete_data=request.values.get('delete_data', False)
             exp_server.delete_study(study, delete_data=delete_data)
-            #TODO: show message on study list page
+            flash('Deleted study "{}"'.format(study))
             return redirect(url_for('manage_view'))
         elif request.method == 'POST':
-            message = '"Confirm" was not checked, so no action was taken.'
+            flash('"Confirm" was not checked, so no action was taken.')
         return render_template(
             'delete_study.html',
             study=exp_server.get_experiment(study),
-            user=auth.get_authed_user(),
-            message=message
+            user=auth.get_authed_user()
         )
 
     @app.route('/manage/<study>/invite/', methods=['GET', 'POST'])
@@ -189,7 +183,6 @@ def init():
         exp = exp_server.get_experiment(study)
         if not exp.is_active() or exp.get_access_type() != 'invite-only':
             abort(404)
-        message = None
         if request.method == 'POST':
             try:
                 if 'revoke-codes' in request.values:
@@ -224,14 +217,13 @@ def init():
                     timeout=timeout
                 )
             except ValueError as e:
-                message=str(e)
+                flash(str(e))
         codes = exp_server.get_participant_codes(study)
         return render_template(
             'invite_code.html',
             study=study,
             user=auth.get_authed_user(),
-            codes=codes,
-            message=message
+            codes=codes
         )
 
     @app.route('/participate/<code>')
@@ -249,7 +241,6 @@ def init():
     def new_study():
         if not admin_access_allowed():
             abort(404)
-        message=None
         study = request.values.get('name', None)
         if study is not None:
             try:
@@ -257,13 +248,13 @@ def init():
                     request.values,
                     request.files.getlist('files')
                 )
+                flash('Created study "{}"'.format(study))
                 return redirect(url_for('manage_specific_study', study=study))
             except Exception as e:
-                message = str(e)
+                flash(str(e))
         return render_template(
             'new_study.html',
-            user=auth.get_authed_user(),
-            message=message
+            user=auth.get_authed_user()
         )
 
     @app.route('/manage/', methods=['GET', 'POST'])

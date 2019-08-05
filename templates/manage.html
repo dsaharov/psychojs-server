@@ -13,6 +13,13 @@
       <div class="title">Study Manager</div>
     </div>
     <div class="content-slice middle columns">
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          {% for message in messages %}
+      <div class="message">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
       <h2>My Studies</h2>
       <ul class="study-list">
       {% for study in studies %}

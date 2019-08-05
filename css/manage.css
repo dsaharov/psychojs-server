@@ -51,7 +51,7 @@ body{
 }
 
 .middle .message {
-  margin:20px;
+  margin-bottom:3px;
   padding:10px;
   border: 1px dotted gray;
   width: 50%;
