@@ -149,6 +149,8 @@ class PsychoJsExperiment():
         # Current run
         self.next_run_id = 1 #TODO: this needs to persist (key for data)
         self.run = None
+        # Permissions
+        self.admins = set()
 
     def log(self, msg, **kwargs):
         self.server.log(msg, study=self.id, **kwargs)
@@ -246,6 +248,15 @@ class PsychoJsExperiment():
     def on_run_finished(self, run):
         self.run = None
 
+    def is_editable_by(self, user):
+        return user in self.admins
+
+    def add_admin(self, user):
+        self.admins.add(user)
+
+    def remove_admin(self, user):
+        self.admins.remove(user)
+
 class ExperimentServer():
 
     def __init__(self, data_path, study_path):
@@ -279,7 +290,7 @@ class ExperimentServer():
 
     def _import_study_files(self, study, files, replace=False):
         if study in self.experiments and not replace:
-            raise ValueError('Study "{}" already exists.'.format(study), study=study)
+            raise ValueError('Study "{}" already exists.'.format(study))
         with tempfile.TemporaryDirectory() as temp_dir:
             self.log('Saving study files to {}'.format(temp_dir), study=study)
             study_files = []
@@ -310,6 +321,7 @@ class ExperimentServer():
         self.log('Trying to add new study "{}"'.format(study), study=study)
         self._import_study_files(study, files, replace=False)
         self.add_study(study)
+
 
     def update_study_files(self, study, files):
         if self.experiments[study].is_active():

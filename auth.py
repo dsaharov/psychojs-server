@@ -100,8 +100,11 @@ class SimpleSessionAuth():
 
         return False
 
+    def get_auth(self):
+        return self.sessions[self.get_session_key()]
+
     def get_authed_user(self):
-        return self.sessions[self.get_session_key()]['user']
+        return self.get_auth()['user']
 
     def create_user(self, name, properties=None):
         if name in self.users:

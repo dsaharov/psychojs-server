@@ -19,12 +19,22 @@ USERS = {
     'admin': {
         'password': 'default',
         'permissions': {
-            'can_manage': True
+            'can_manage': True,
+            'super_user': True,
         }
     }
 }
 def user_can_manage(auth):
     return auth.get('can_manage', False)
+
+def can_edit_study(auth, exp):
+    return exp.is_editable_by(auth.get('user')) or \
+        auth.get('super_user', False)
+
+def user_can_edit_study(exp):
+    return (
+        lambda auth: user_can_manage(auth) and can_edit_study(auth, exp)
+    )
 
 def user_can_access_study(study):
     return (
@@ -44,11 +54,21 @@ def init():
         timeout_attempts=ATTEMPTS_BEFORE_LOCKOUT,
         timeout_duration=LOCKOUT_DURATION
     )
+    exp_server = ExperimentServer(DATA_PATH, STUDY_PATH)
+    exp_server.load_experiments()
     def admin_access_allowed(study=None):
-        # TODO: can user manage this specific study?
-        return auth.is_session_authenticated(
-            permission_fn=user_can_manage
-        )
+        if study is not None:
+            try:
+                exp = exp_server.get_experiment(study)
+            except:
+                return False
+            return auth.is_session_authenticated(
+                permission_fn=user_can_edit_study(exp)
+            )
+        else:
+            return auth.is_session_authenticated(
+                permission_fn=user_can_manage
+            )
     def study_access_allowed(study):
         if not exp_server.study_available(study):
             return False
@@ -66,9 +86,6 @@ def init():
     if not os.path.exists(STUDY_PATH):
         log('Creating study directory at {}'.format(STUDY_PATH))
         os.makedirs(STUDY_PATH)
-
-    exp_server = ExperimentServer(DATA_PATH, STUDY_PATH)
-    exp_server.load_experiments()
 
     @app.route('/manage/logout')
     def logout():
@@ -249,6 +266,11 @@ def init():
                     request.files.getlist('files')
                 )
                 flash('Created study "{}"'.format(study))
+                user = auth.get_authed_user()
+                exp_server.get_experiment(study).add_admin(
+                    user
+                )
+                log('{} created study {}'.format(user, study))
                 return redirect(url_for('manage_specific_study', study=study))
             except Exception as e:
                 flash(str(e))
@@ -273,11 +295,13 @@ def init():
                 ))
 
         if admin_access_allowed():
+            user = auth.get_authed_user()
+            perms = auth.get_auth()
             return render_template(
                 'manage.html',
-                user=auth.get_authed_user(),
+                user=user,
                 studies=sorted(
-                    exp_server.get_experiments(),
+                    [x for x in exp_server.get_experiments() if can_edit_study(perms, x)],
                     key=lambda e:0 if e.is_active() else 1
                 ),
             )
