@@ -69,7 +69,7 @@ class ExperimentRun():
         self.id = id
         self.data_path = data_path
         # Sessions
-        self.next_session_token = 1
+        self.next_session_token = 0
         self.sessions = {}
         # Access
         self.size = size
@@ -85,7 +85,8 @@ class ExperimentRun():
         return self.size - self.num_sessions
 
     def get_next_session_token(self):
-        return str(self.num_sessions + 1)
+        self.next_session_token += 1
+        return str(self.next_session_token)
 
     def finish_run(self):
         self.log('Run complete')
