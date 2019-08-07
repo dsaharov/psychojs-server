@@ -328,8 +328,7 @@ def init():
     def send_study(study):
         if not study_access_allowed(study):
             abort(404)
-        study_path = exp_server.get_path(study)
-        return send_from_directory(study_path, 'index.html')
+        return render_template('study_index.html', study=study)
 
     @app.route('/study/<study>/config.json')
     def send_study_config(study):

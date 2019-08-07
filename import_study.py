@@ -12,8 +12,8 @@ def import_js(study_name, study_files):
         # we should probably generate our own, anyway
         if 'NoModule' in f['name']:
             continue
-        if any(f['name'].endswith(x) for x in ['html', 'js']):
-            path = os.path.join('study',study_name,f['name'])
+        if any(f['name'].endswith(x) for x in ['js']):
+            path = os.path.join('study',study_name,'exp.js')
             # Copy the file, making compatability changes in the process
             with open(f['full_path'], encoding='utf-8') as source_file:
                 file_contents = source_file.read()
@@ -47,7 +47,11 @@ def import_resources(study_name, study_files, js_file_path):
     for f in study_files:
         if not f['name'].startswith('resources_'):
             continue
-        resource_path = 'resources/{}'.format(f['name'][len('resources_'):])
+        extension = ''
+        idx = f['name'].rfind('.')
+        if idx > -1:
+            extension = f['name'][idx:]
+        resource_path = 'resources/{}{}'.format(len(resources),extension)
         shutil.copy(
             f['full_path'], os.path.join('study', study_name, resource_path))
         resources.append(
