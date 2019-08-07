@@ -336,6 +336,20 @@ def init():
             abort(404)
         return jsonify(exp_server.get_config(study))
 
+    @app.route('/study/<study>/exp.js')
+    def send_study_main_js(study):
+        if not study_access_allowed(study):
+            abort(404)
+        study_path = exp_server.get_path(study)
+        return send_from_directory(study_path, 'exp.js')
+
+    @app.route('/study/<study>/resources/<path:path>')
+    def send_study_resource(study, path):
+        if not study_access_allowed(study):
+            abort(404)
+        study_path = exp_server.get_path(study)
+        return send_from_directory(os.path.join(study_path,'resources'), path)
+
     @app.route('/study/<study>/server/', methods=['GET', 'POST'])
     def study_server(study):
         if not study_access_allowed(study):
@@ -343,13 +357,6 @@ def init():
         response = exp_server.handle_request(
             study, request, auth.get_authed_user())
         return jsonify(response)
-
-    @app.route('/study/<study>/<path:path>')
-    def send_study_files(study, path):
-        if not study_access_allowed(study):
-            abort(404)
-        study_path = exp_server.get_path(study)
-        return send_from_directory(study_path, path)
 
     return app
 
