@@ -261,16 +261,18 @@ def init():
         study = request.values.get('name', None)
         if study is not None:
             try:
+                user = auth.get_authed_user()
+                log('Creating study "{}"...'.format(study), user=user)
                 exp_server.create_new_study(
                     request.values,
                     request.files.getlist('files')
                 )
                 flash('Created study "{}"'.format(study))
-                user = auth.get_authed_user()
                 exp_server.get_experiment(study).add_admin(
                     user
                 )
-                log('{} created study {}'.format(user, study))
+                exp_server.save_study_metadata(study)
+                log('Study created.', user=user, study=study)
                 return redirect(url_for('manage_specific_study', study=study))
             except Exception as e:
                 flash(str(e))

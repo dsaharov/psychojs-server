@@ -258,6 +258,16 @@ class PsychoJsExperiment():
     def remove_admin(self, user):
         self.admins.remove(user)
 
+    def meta_to_json_str(self):
+        meta = {}
+        meta['admins'] = list(self.admins)
+        return json.dumps(meta)
+
+    def load_meta_json_str(self, json_str):
+        meta = json.loads(json_str)
+        self.admins = set(meta['admins'])
+
+
 class ExperimentServer():
 
     def __init__(self, data_path, study_path):
@@ -270,6 +280,23 @@ class ExperimentServer():
 
     def log(self, msg, **kwargs):
         log(msg, **kwargs)
+
+    def get_metafile_path(self, study):
+        return os.path.join(
+            self.study_path,
+            study,
+            'meta.json'
+        )
+
+    def save_study_metadata(self, study):
+        with open(self.get_metafile_path(study), 'w') as md:
+            md.write(self.experiments[study].meta_to_json_str())
+
+    def load_study_metadata(self, study):
+        with open(self.get_metafile_path(study)) as md:
+            self.experiments[study].load_meta_json_str(
+                md.read()
+            )
 
     def add_study(self, study):
         study_path = os.path.join(self.study_path, study)
@@ -373,8 +400,9 @@ class ExperimentServer():
 
         self.log('Registering experiments...')
         for study in os.listdir(self.study_path):
+            self.log('Adding "{}"...'.format(study))
             self.add_study(study)
-            self.log('Added "{}"'.format(study))
+            self.load_study_metadata(study)
 
     def study_available(self, study):
         return study in self.experiments and \
