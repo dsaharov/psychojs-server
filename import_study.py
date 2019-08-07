@@ -4,7 +4,7 @@ import shutil
 import glob
 from logger import log
 
-def import_js(study_name, study_files):
+def import_js(study_name, study_files, study_path):
     log('Copying js', study=study_name)
     js_file_path = None
     for f in study_files:
@@ -13,7 +13,7 @@ def import_js(study_name, study_files):
         if 'NoModule' in f['name']:
             continue
         if any(f['name'].endswith(x) for x in ['js']):
-            path = os.path.join('study',study_name,'exp.js')
+            path = os.path.join(study_path, 'exp.js')
             # Copy the file, making compatability changes in the process
             with open(f['full_path'], encoding='utf-8') as source_file:
                 file_contents = source_file.read()
@@ -39,10 +39,10 @@ def import_js(study_name, study_files):
     return js_file_path
 
 
-def import_resources(study_name, study_files, js_file_path):
+def import_resources(study_name, study_files, js_file_path, study_path):
     # Copy the uploaded study resources and make them available in the study
     log('Copying resources', study=study_name)
-    os.makedirs(os.path.join('study', study_name, 'resources'))
+    os.makedirs(os.path.join(study_path, 'resources'))
     resources = []
     for f in study_files:
         if not f['name'].startswith('resources_'):
@@ -53,7 +53,7 @@ def import_resources(study_name, study_files, js_file_path):
             extension = f['name'][idx:]
         resource_path = 'resources/{}{}'.format(len(resources),extension)
         shutil.copy(
-            f['full_path'], os.path.join('study', study_name, resource_path))
+            f['full_path'], os.path.join(study_path, resource_path))
         resources.append(
             '{}name: "{}", path: "{}"{}'.format(
                 '{',
@@ -78,13 +78,13 @@ psychoJS.start({}expName, expInfo, resources{});
     with open(js_file_path, 'w', encoding='utf-8') as f:
         f.write(contents.replace('psychoJS.start({expName, expInfo});', resource_str, 1))
 
-def import_study(study_name, study_files, replace=False):
-    study_path = os.path.join('study', study_name)
+def import_study(study_name, study_files, path_root, replace=False):
+    study_path = os.path.join(path_root, study_name)
     if os.path.exists(study_path):
         if not replace:
             raise ValueError('Study already exists')
         log('Removing current files', study=study_name)
         shutil.rmtree(study_path)
     os.makedirs(study_path)
-    js_file_path = import_js(study_name, study_files)
-    import_resources(study_name, study_files, js_file_path)
+    js_file_path = import_js(study_name, study_files, study_path)
+    import_resources(study_name, study_files, js_file_path, study_path)

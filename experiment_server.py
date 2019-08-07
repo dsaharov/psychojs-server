@@ -336,7 +336,7 @@ class ExperimentServer():
                 })
                 file.save(full_path)
             self.log('Copying new files', study=study)
-            import_study(study, study_files, replace=replace)
+            import_study(study, study_files, self.study_path, replace=replace)
             self.log('Done copying files', study=study)
 
     def create_new_study(self, values, files):
@@ -356,6 +356,7 @@ class ExperimentServer():
             raise ValueError('Study is currently running; deactivate it before changing files.')
         self.log('Updating study files', study=study)
         self._import_study_files(study, files, replace=True)
+        self.save_study_metadata(study)
 
     def delete_study(self, study, delete_data=False):
         log('Removing study "{}"'.format(study), study=study)
@@ -363,7 +364,7 @@ class ExperimentServer():
         del self.experiments[study]
         if exp.is_active():
             exp.cancel_run()
-        shutil.rmtree(os.path.join('study',study))
+        shutil.rmtree(os.path.join(self.study_path, study))
         if delete_data:
             shutil.rmtree(os.path.join(self.data_path, study))
             log('Removed all collected data.'.format(study), study=study)
