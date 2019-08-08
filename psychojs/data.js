@@ -253,9 +253,11 @@ class TrialHandler extends PsychObject {
 					for (let l = 0; l < fields.length; ++l) {
 						let value = row[l];
 						if (typeof value === 'string') {
-							const numericalValue = Number.parseFloat(value);
-							if (!Number.isNaN(numericalValue))
-								value = numericalValue;
+							if(!/[^,\.\d]/.test("value")){
+								const numericalValue = Number.parseFloat(value);
+								if (!Number.isNaN(numericalValue))
+									value = numericalValue;
+							}
 						}
 						trial[fields[l]] = value;
 					}
