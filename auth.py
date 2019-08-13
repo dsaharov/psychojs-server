@@ -115,14 +115,14 @@ class SimpleSessionAuth():
         self.users[name]['created_time'] = datetime.now()
 
     def create_temporary_user(
-            self, name=None, properties=None, readable_name=False):
+            self, name=None, properties=None, readable_name=False, name_bytes=16):
         if name in self.users:
             raise ValueError('User already exists')
         while name is None or name in self.users:
             if readable_name:
-                name = secrets.token_hex(4)
+                name = secrets.token_hex(name_bytes)
             else:
-                name = secrets.token_urlsafe()
+                name = secrets.token_urlsafe(name_bytes)
         props = {}
         if properties is not None:
             props.update(properties)

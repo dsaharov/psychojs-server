@@ -113,6 +113,21 @@ def init():
             user=auth.get_authed_user()
         )
 
+    def make_temp_user_for_study(study):
+        username = auth.create_temporary_user(
+            properties={
+                'permissions': {
+                    'studies': [study]
+                }
+            },
+            readable_name=True,
+            name_bytes=6
+        )
+        def remove_temp_user_fn():
+            log('Removing temp user',user=username)
+            auth.delete_user(username)
+        return (username, remove_temp_user_fn)
+
     @app.route('/manage/<study>/activate', methods=['GET', 'POST'])
     def activate_study(study):
         if not admin_access_allowed(study=study):
@@ -135,9 +150,20 @@ def init():
                         except:
                             raise ValueError(
                                 'Please enter a positive whole number.')
-                    if access_type not in ['anyone', 'invite-only']:
+                    if access_type not in [
+                            'anyone',
+                            'invite-only',
+                            'invite-and-url',
+                            'url-only']:
                         raise ValueError('Unknown access type')
                     exp.start_run(size=size, access_type=access_type)
+                    if access_type in ['invite-and-url', 'url-only']:
+                        (code, remove_fn) = make_temp_user_for_study(study)
+                        exp_server.add_secret_url_code(
+                            study,
+                            code,
+                            remove_fn
+                        )
                     flash('Study is now active.')
                     return redirect(url_for('manage_specific_study', study=study))
                 except Exception as e:
@@ -198,7 +224,8 @@ def init():
         if not admin_access_allowed(study=study):
             abort(404)
         exp = exp_server.get_experiment(study)
-        if not exp.is_active() or exp.get_access_type() != 'invite-only':
+        if not exp.is_active() or exp.get_access_type() not in [
+                'invite-only', 'invite-and-url']:
             abort(404)
         if request.method == 'POST':
             try:
@@ -215,22 +242,11 @@ def init():
                     }[request.values['timeout']]
                 except:
                     raise ValueError('Invalid timeout specified.')
-                username = auth.create_temporary_user(
-                    properties={
-                        'permissions': {
-                            'studies': [study]
-                        }
-                    },
-                    readable_name=True
-                )
-                def remove_temp_user():
-                    log('Removing temp user',code=username)
-                    auth.delete_user(username)
-
+                (username, remove_temp_user_fn) = make_temp_user_for_study(study)
                 exp_server.add_participant_code(
                     username,
                     study,
-                    on_expire=remove_temp_user,
+                    on_expire=remove_temp_user_fn,
                     timeout=timeout
                 )
             except ValueError as e:
@@ -246,9 +262,13 @@ def init():
     @app.route('/participate/<code>')
     def participate_code(code):
         try:
-            study = exp_server.activate_participant_code(code)
-        except:
-            abort(404)
+            study = exp_server.get_study_for_secret_url_code(code)
+        except KeyError:
+            # It isn't a secret url code, try participant codes
+            try:
+                study = exp_server.activate_participant_code(code)
+            except:
+                abort(404)
         if not auth.check_add_auth(code):
             log('WARN: Code has no corresponding user', code=code)
             abort(404)

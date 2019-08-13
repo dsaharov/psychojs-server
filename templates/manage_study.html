@@ -31,10 +31,15 @@
       <span class="access-type">
         Accessible by: {{ study.get_access_type() }}
       </span>
+        {% if study.has_secret_url() %}
+      <span class="secret-url">
+        Secret URL: <a href="{{ url_for('participate_code', code=study.get_secret_url(), _external=True) }}">{{ study.get_secret_url() }}</a>
+      </span>
+        {% endif %}
       {% endif %}
       <h3>Options</h3>
       {% if study.is_active() %}
-      {% if study.get_access_type() == 'invite-only' %}
+      {% if study.get_access_type() == 'invite-only' or study.get_access_type() == 'invite-and-url' %}
       <a class="get-invite-code button" href="{{ url_for('create_participant_code', study=study.id) }}">Invite Codes...</a>
       {% endif %}
       <a class="deactivate-study button" href="{{url_for('deactivate_study', study=study.id)}}">Deactivate...</a>

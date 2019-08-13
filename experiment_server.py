@@ -152,6 +152,7 @@ class PsychoJsExperiment():
         self.run = None
         # Permissions
         self.admins = set()
+        self.secret_url = None
 
     def log(self, msg, **kwargs):
         self.server.log(msg, study=self.id, **kwargs)
@@ -248,6 +249,8 @@ class PsychoJsExperiment():
 
     def on_run_finished(self, run):
         self.run = None
+        if self.has_secret_url():
+            self.server.remove_secret_url_code(self.secret_url)
 
     def is_editable_by(self, user):
         return user in self.admins
@@ -267,6 +270,20 @@ class PsychoJsExperiment():
         meta = json.loads(json_str)
         self.admins = set(meta['admins'])
 
+    def has_secret_url(self):
+        return self.secret_url is not None
+
+    def remove_secret_url(self):
+        self.secret_url = None
+
+    def set_secret_url(self, code):
+        if self.has_secret_url():
+            self.server.remove_secret_url_code(self.secret_url)
+        self.secret_url = code
+
+    def get_secret_url(self):
+        return self.secret_url
+
 
 class ExperimentServer():
 
@@ -277,6 +294,8 @@ class ExperimentServer():
         # Participant codes
         self.participant_codes = {}
         self.session_code_map = {}
+        # Secret URLs
+        self.secret_urls = {}
 
     def log(self, msg, **kwargs):
         log(msg, **kwargs)
@@ -452,6 +471,8 @@ class ExperimentServer():
     def get_experiment(self, study):
         return self.experiments[study]
 
+    # Participant codes - single use access for individual participants
+    # most restrictive access mode
     def add_participant_code(self, code, study, **kwargs):
         code_props = {
             'study': study
@@ -523,3 +544,24 @@ class ExperimentServer():
         ]
         for code in target_codes:
             self.remove_code_and_session(code)
+
+    # Secret url - level of access between public and participant codes
+    # participants can keep accessing the study at the url until it is closed
+    def add_secret_url_code(self, study, code, remove_fn):
+        self.secret_urls[code] = {
+            'study': study,
+            'on_remove': remove_fn
+        }
+        self.get_experiment(study).set_secret_url(code)
+
+
+    def get_study_for_secret_url_code(self, code):
+        study = self.secret_urls[code]['study']
+        self.get_experiment(study).log('Secret URL accessed', code=code)
+        return study
+
+    def remove_secret_url_code(self, code):
+        code_obj = self.secret_urls[code]
+        code_obj['on_remove']()
+        self.get_experiment(code_obj['study']).remove_secret_url()
+        del self.secret_urls[code]
