@@ -21,19 +21,21 @@
         {% endif %}
       {% endwith %}
       <h2>{{ study.id }}</h2>
-      Current status: {{ 'active' if study.is_active() else 'inactive'}}
+      <span class="current-status">
+      <b>Current status</b>: {{ 'active' if study.is_active() else 'inactive'}}
+      </span>
       {% if study.is_active() %}
-      <span class="sessions-remaining">{{(
-        'Sessions remaining: {} / {}'.format(
+      <span class="sessions-remaining">
+        <b>Sessions remaining</b>: {{('{} / {}'.format(
           study.get_remaining_sessions(), study.get_total_sessions()
-        ) if study.has_session_limit() else 'No session limit set.'
+        ) if study.has_session_limit() else 'unlimited'
       )}}</span>
       <span class="access-type">
-        Accessible by: {{ study.get_access_type() }}
+        <b>Accessible by</b>: {{ study.get_access_type() }}
       </span>
         {% if study.has_secret_url() %}
       <span class="secret-url">
-        Secret URL: <a href="{{ url_for('participate_code', code=study.get_secret_url(), _external=True) }}">{{ study.get_secret_url() }}</a>
+        <b>Secret URL</b>: <a href="{{ url_for('participate_code', code=study.get_secret_url(), _external=True) }}">{{ study.get_secret_url() }}</a>
       </span>
         {% endif %}
       {% endif %}
