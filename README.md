@@ -14,13 +14,10 @@ The default port is 8080. If you need to change the server port, edit this file.
 
 | Endpoint | What is it for? | Requires Login |
 |---|---|---|
-| \/manage\/ | Lists the currently hosted studies and a menu of options  | Yes |
-| \/manage\/new\/ | Lets you create a new study. Study name should be unique and contain no special characters. | Yes |
-| \/manage\/\<study\>\/ | Options for editing and deleting a specific study | Yes |
-| \/manage\/\<study\>\/delete\/ | Options for deleting a study and its collected data | Yes |
-| \/manage\/\<study\>\/invite\/ | Generates one-session participant codes for giving access a study | Yes |
-| \/participate\/<code\> | Uses a participant code to access a study | No |
-| \/study\/\<study\>\/ | Runs the study in your browser | Depends on settings |
+| manage\/ | Lists the currently hosted studies and a menu of options  | Yes |
+| manage\/\<study\>\/ | Options for managing and updating a specific study | Yes |
+| participate\/<code\> | Uses an invite code or secret URL to access a study | No |
+| study\/\<study\>\/ | Direct access to a study | Depends on settings |
 
 **Creating and editing studies**
 
@@ -31,10 +28,13 @@ folder contains all the resources you use in your PsychoPy study.
 
 **Running studies**
 
-When you first create a study, it will show up as *inactive* and will not accept subjects. You can activate it on the manage page for the specific study. Active studies can be deactivated on this same page.
+When you first create a study, it will show up as *inactive* and will not accept subjects. You can activate it on the manage page for the specific study. Active studies can be deactivated from this same page.
 
-If the server is set to deny unauthorized access to studies, you can give a subject access to one session of a study by
-generating an *invite code* from the study's manage page. The option will give you a URL with the code already entered, which
-you can then send to the subject.
+**Study Access Options**
 
-NOTE: Deactivating a study will revoke all of its current invite codes.
+If the server is set to deny unauthorized access to studies, you can give temporary access to subjects by using *invite codes*
+or a *secret URL*.
+
+*Invite codes* give access to one session of a study. If your study is active with the correct access setting, you can generate them from the study's manage page. The option will give you URLs with the code already entered, which you can then send to the subject.
+
+A *Secret URL* gives unlimited access to anyone who has the URL. These may be more convenient if you need to give access to many participants at once or cannot provide more than one URL to subjects. You get a Secret URL by picking a relevant access setting while activating your study, and the URL is revoked once you deactivate the study.
