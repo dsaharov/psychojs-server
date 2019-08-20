@@ -8,6 +8,7 @@ import datetime
 import shutil
 import subprocess
 from contextlib import contextmanager
+from dateutil.parser import parse as parse_datestr
 
 
 EXPERIMENT_SESSION_TIMEOUT = datetime.timedelta(hours=2)
@@ -49,7 +50,7 @@ class ExperimentSession():
                 f.write(self.data[key])
             self.log('Wrote {}'.format(key))
 
-    def close(self, session_completed=False):
+    def close(self, session_completed=False, bulk=False):
         self.log('Closing session ({})'.format(
             'complete' if session_completed else 'incomplete'
         ))
@@ -58,7 +59,7 @@ class ExperimentSession():
                 (session_completed or self.save_data_on_incomplete):
             self.log('Saving data...')
             self.save_data()
-        self.run.on_session_closed(self)
+        self.run.on_session_closed(self, bulk)
 
     def get_redirect_url_override(self):
         if self.is_complete:
@@ -91,6 +92,31 @@ class ExperimentRun():
         self.cancel_url = cancel_url
 
 
+    def to_dict(self):
+        obj = {
+            'id' : self.id,
+            'data_path': self.data_path,
+            'size': self.size,
+            'num_sessions': self.num_sessions,
+            'access_type': self.access_type,
+            'completion_url': self.completion_url,
+            'cancel_url': self.cancel_url
+        }
+        return obj
+
+    def from_dict(exp, obj):
+        run = ExperimentRun(
+            exp,
+            obj['id'],
+            obj['data_path'],
+            obj['size'],
+            obj['access_type'],
+            obj['completion_url'],
+            obj['cancel_url']
+        )
+        run.num_sessions = obj['num_sessions']
+        return run
+
     def log(self, msg, **kwargs):
         self.experiment.log(msg, run=self.id, **kwargs)
 
@@ -107,14 +133,16 @@ class ExperimentRun():
         self.log('Run complete')
         self.experiment.on_run_finished(self)
 
-    def on_session_closed(self, session):
+    def on_session_closed(self, session, bulk=False):
         if session.has_data:
             self.num_sessions += 1
         token = session.token
         del self.sessions[token]
-        self.experiment.on_session_closed(session)
+        self.experiment.on_session_closed(session, bulk=bulk)
         if self.size is not None and self.get_remaining_sessions() == 0:
             self.finish_run()
+        elif not bulk:  #TODO: HACK to prevent extra file writes
+            self.experiment.save_metadata()
 
     def has_session(self, token):
         return token in self.sessions
@@ -124,7 +152,8 @@ class ExperimentRun():
 
     def close_all_sessions(self):
         for session in list(self.sessions.values()):
-            session.close()
+            #TODO: HACK to prevent extra file writes
+            session.close(bulk=True)
 
     def timeout_old_sessions(self):
         now = datetime.datetime.now()
@@ -235,6 +264,7 @@ class PsychoJsExperiment():
             cancel_url
         )
         os.makedirs(run_data_path)
+        self.save_metadata()
 
     def cancel_run(self):
         if not self.is_active():
@@ -246,8 +276,8 @@ class PsychoJsExperiment():
             raise ValueError()
         return self.run.open_session()
 
-    def on_session_closed(self, session):
-        self.server.on_session_closed(self, session)
+    def on_session_closed(self, session, bulk=False):
+        self.server.on_session_closed(self, session, bulk=bulk)
 
     def get_remaining_sessions(self):
         if not self.is_active():
@@ -271,6 +301,7 @@ class PsychoJsExperiment():
         self.run = None
         if self.has_secret_url():
             self.server.remove_secret_url_code(self.secret_url)
+        self.save_metadata()
 
     def is_editable_by(self, user):
         return user in self.admins
@@ -284,11 +315,21 @@ class PsychoJsExperiment():
     def meta_to_json_str(self):
         meta = {}
         meta['admins'] = list(self.admins)
+        meta['next_run_id'] = self.next_run_id
+        if self.is_active():
+            meta['run'] = self.run.to_dict()
         return json.dumps(meta)
 
     def load_meta_json_str(self, json_str):
         meta = json.loads(json_str)
-        self.admins = set(meta['admins'])
+        self.admins = set(meta.get('admins', []))
+        self.next_run_id = meta.get('next_run_id', 1)
+        if 'run' in meta:
+            self.run = ExperimentRun.from_dict(self, meta['run'])
+
+    def save_metadata(self):
+        self.log('Saving metadata')
+        self.server.save_study_metadata(self.id)
 
     def has_secret_url(self):
         return self.secret_url is not None
@@ -299,6 +340,7 @@ class PsychoJsExperiment():
     def set_secret_url(self, code):
         if self.has_secret_url():
             self.server.remove_secret_url_code(self.secret_url)
+        self.log('New secret url',code=code)
         self.secret_url = code
 
     def get_secret_url(self):
@@ -319,15 +361,15 @@ class PsychoJsExperiment():
 
 class ExperimentServer():
 
-    def __init__(self, data_path, study_path):
+    def __init__(self, data_path, study_path, code_generator_fn):
         self.experiments = {}
         self.data_path = data_path
         self.study_path = study_path
         # Participant codes
         self.participant_codes = {}
         self.session_code_map = {}
-        # Secret URLs
-        self.secret_urls = {}
+        # Code generation
+        self.code_generator_fn = code_generator_fn
 
     def log(self, msg, **kwargs):
         log(msg, **kwargs)
@@ -348,6 +390,60 @@ class ExperimentServer():
             self.experiments[study].load_meta_json_str(
                 md.read()
             )
+
+    def load_server_metadata(self, meta_json):
+        if 'participant_codes' in meta_json:
+            for props in meta_json['participant_codes']:
+                code = props['code']
+                study = props['study']
+                kwargs = {}
+                if props.get('is_secret_url', False):
+                    self.get_experiment(study).set_secret_url(code)
+                    kwargs['is_secret_url'] = True
+                else:
+                    kwargs['timeout'] = parse_datestr(props['timeout'])
+                    kwargs['unique_session'] = props['unique_session']
+                    kwargs['session_limit'] = props['session_limit']
+                    kwargs['session_count'] = props.get('session_count', 0)
+                self.add_participant_code(study, code=code, **kwargs)
+
+    def save_server_metadata(self):
+        metadata = {}
+        metadata['participant_codes'] = []
+        for code in self.participant_codes:
+            props = self.participant_codes[code]
+            meta_obj = {
+                'study': props['study'],
+                'code': code
+            }
+            if props.get('is_secret_url', False):
+                meta_obj['is_secret_url'] = True
+            else:
+                meta_obj['timeout'] = props['timeout'].isoformat()
+                meta_obj['unique_session'] = props['unique_session']
+                meta_obj['session_limit'] = props['session_limit']
+                meta_obj['session_count'] = props.get('session_count', 0)
+            metadata['participant_codes'].append(meta_obj)
+        return metadata
+
+
+    def get_server_metadata_file_path(self):
+        return os.path.join(
+            self.study_path,
+            'server.json'
+        )
+
+    def save_server_metadata_file(self):
+        self.log('Saving server metadata...')
+        with open(self.get_server_metadata_file_path(), 'w') as md:
+            md.write(json.dumps(self.save_server_metadata(), indent=2))
+
+    def load_server_metadata_file(self):
+        try:
+            with open(self.get_server_metadata_file_path()) as md:
+                self.load_server_metadata(json.loads(md.read()))
+        except FileNotFoundError:
+            self.log('nothing to load')
 
     def add_study(self, study):
         study_path = os.path.join(self.study_path, study)
@@ -452,9 +548,16 @@ class ExperimentServer():
 
         self.log('Registering experiments...')
         for study in os.listdir(self.study_path):
+            if not os.path.isdir(os.path.join(
+                    self.study_path,
+                    study)):
+                continue
             self.log('Adding "{}"...'.format(study))
             self.add_study(study)
             self.load_study_metadata(study)
+
+        self.log('Loading server metadata...')
+        self.load_server_metadata_file()
 
     def study_available(self, study):
         return study in self.experiments and \
@@ -466,6 +569,13 @@ class ExperimentServer():
     def get_config(self, study):
         return self.experiments[study].config
 
+    def has_unique_session_code(self, code):
+        return code in self.participant_codes and \
+            self.participant_codes[code].get(
+                'unique_session',
+                False
+            )
+
     def handle_request(self, study, request, user):
         exp = self.experiments[study]
         command = request.args['command']
@@ -476,7 +586,7 @@ class ExperimentServer():
             session = exp.get_session(token)
         if command == 'open_session':
             exp.timeout_old_sessions()
-            if user in self.participant_codes:
+            if self.has_unique_session_code(user):
                 token = self.participant_codes[user]['session']
             else:
                 token = exp.open_session()
@@ -506,54 +616,89 @@ class ExperimentServer():
     def get_experiment(self, study):
         return self.experiments[study]
 
-    # Participant codes - single use access for individual participants
-    # most restrictive access mode
-    def add_participant_code(self, code, study, **kwargs):
-        code_props = {
-            'study': study
-        }
-        code_props.update(kwargs)
-        self.participant_codes[code] = code_props
+    def add_participant_code(self, study, code=None, **kwargs):
+        props = self.code_generator_fn(study, code=code)
+        code = props['code']
+        self.log('New code',code=code, study=study)
+        props.update(kwargs)
+        self.participant_codes[code] = props
+        return code
 
-    def remove_participant_code(self, code):
+    def remove_participant_code(self, code, bulk=False):
         self.log('Removing participant code', code=code)
         props = self.participant_codes[code]
-        if 'on_expire' in props:
-            props['on_expire']()
+        props['on_remove']()
         if 'session' in props:
             del self.session_code_map[(props['study'], props['session'])]
         del self.participant_codes[code]
+        if not bulk:
+            self.save_server_metadata_file()
 
-    def on_session_closed(self, experiment, session):
+    # Invite codes - single use access for individual participants
+    # most restrictive access mode
+    def add_invite_code(self, study, **kwargs):
+        self.add_participant_code(
+            study,
+            unique_session=True,
+            **kwargs
+        )
+        self.save_server_metadata_file()
+
+    # Secret url - level of access between public and participant codes
+    # participants can keep accessing the study at the url until it is closed
+    def add_secret_url(self, study):
+        code = self.add_participant_code(
+            study,
+            is_secret_url=True
+        )
+        self.get_experiment(study).set_secret_url(code)
+        self.save_server_metadata_file()
+
+    def remove_secret_url_code(self, code):
+        props = self.participant_codes[code]
+        self.remove_participant_code(code)
+        self.get_experiment(props['study']).remove_secret_url()
+        self.save_server_metadata_file()
+
+    def on_session_closed(self, experiment, session, bulk=False):
         try:
             key = (
                 experiment.id,
                 session.token
             )
             code = self.session_code_map[key]
-            self.remove_participant_code(code)
+            props = self.participant_codes[code]
+            if 'session_limit' in props:
+                session_count = props.get('session_count', 0) + 1
+                if session_count == props['session_limit']:
+                    self.remove_participant_code(code, bulk=bulk)
+                else:
+                    props['session_count'] = session_count
+                    if not bulk:
+                        self.save_server_metadata_file()
         except KeyError:
             pass # harmless
 
-    def remove_code_and_session(self, code):
+    def remove_code_and_session(self, code, bulk=False):
         props = self.participant_codes[code]
         if 'session' in props:
             self.experiments[props['study']].get_session(
-                props['session']).close()
+                props['session']).close(bulk=bulk)
         else:
-            self.remove_participant_code(code)
+            self.remove_participant_code(code, bulk=bulk)
 
     def activate_participant_code(self, code):
         props = self.participant_codes[code]
         study = props['study']
         exp = self.experiments[study]
+
         if 'timeout' in props and \
                 datetime.datetime.now() >= props['timeout']:
             self.log('Participant code is expired', code=code)
             self.remove_code_and_session(code)
             raise ValueError()
         self.log('Participant code accessed', code=code)
-        if 'session' not in props:
+        if 'unique_session' in props and 'session' not in props:
             session_token = exp.open_session()
             props['session'] = session_token
             self.session_code_map[(study, session_token)] = code
@@ -563,6 +708,8 @@ class ExperimentServer():
         codes = []
         for code in self.participant_codes:
             props = self.participant_codes[code]
+            if 'unique_session' not in props:
+                continue
             if props['study'] == study:
                 code_obj = {
                     'code': code
@@ -575,28 +722,9 @@ class ExperimentServer():
         self.log('Revoking all participant codes', study=study)
         target_codes = [
             code for code in self.participant_codes if
-                self.participant_codes[code]['study'] == study
+                self.participant_codes[code]['study'] == study and
+                self.participant_codes[code].get('unique_session', False)
         ]
         for code in target_codes:
-            self.remove_code_and_session(code)
-
-    # Secret url - level of access between public and participant codes
-    # participants can keep accessing the study at the url until it is closed
-    def add_secret_url_code(self, study, code, remove_fn):
-        self.secret_urls[code] = {
-            'study': study,
-            'on_remove': remove_fn
-        }
-        self.get_experiment(study).set_secret_url(code)
-
-
-    def get_study_for_secret_url_code(self, code):
-        study = self.secret_urls[code]['study']
-        self.get_experiment(study).log('Secret URL accessed', code=code)
-        return study
-
-    def remove_secret_url_code(self, code):
-        code_obj = self.secret_urls[code]
-        code_obj['on_remove']()
-        self.get_experiment(code_obj['study']).remove_secret_url()
-        del self.secret_urls[code]
+            self.remove_code_and_session(code, bulk=True)
+        self.save_server_metadata_file()

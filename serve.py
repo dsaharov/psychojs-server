@@ -54,7 +54,33 @@ def init():
         timeout_attempts=ATTEMPTS_BEFORE_LOCKOUT,
         timeout_duration=LOCKOUT_DURATION
     )
-    exp_server = ExperimentServer(DATA_PATH, STUDY_PATH)
+
+    def make_temp_user_for_study(study, username=None):
+        username = auth.create_temporary_user(
+            properties={
+                'permissions': {
+                    'studies': [study]
+                }
+            },
+            name=username,
+            readable_name=True,
+            name_bytes=6
+        )
+        def remove_temp_user_fn():
+            log('Removing temp user',user=username)
+            auth.delete_user(username)
+        return (username, remove_temp_user_fn)
+
+    def code_generator_fn(study, code=None):
+        (username, remove_fn) = make_temp_user_for_study(study, username=code)
+        return {
+            'code': username,
+            'study': study,
+            'on_remove': remove_fn
+        }
+
+    exp_server = ExperimentServer(DATA_PATH, STUDY_PATH, code_generator_fn)
+
     exp_server.load_experiments()
     def admin_access_allowed(study=None):
         if study is not None:
@@ -113,21 +139,6 @@ def init():
             user=auth.get_authed_user()
         )
 
-    def make_temp_user_for_study(study):
-        username = auth.create_temporary_user(
-            properties={
-                'permissions': {
-                    'studies': [study]
-                }
-            },
-            readable_name=True,
-            name_bytes=6
-        )
-        def remove_temp_user_fn():
-            log('Removing temp user',user=username)
-            auth.delete_user(username)
-        return (username, remove_temp_user_fn)
-
     @app.route('/manage/<study>/activate', methods=['GET', 'POST'])
     def activate_study(study):
         if not admin_access_allowed(study=study):
@@ -171,12 +182,7 @@ def init():
                         cancel_url=cancel_url
                     )
                     if access_type in ['invite-and-url', 'url-only']:
-                        (code, remove_fn) = make_temp_user_for_study(study)
-                        exp_server.add_secret_url_code(
-                            study,
-                            code,
-                            remove_fn
-                        )
+                        exp_server.add_secret_url(study)
                     flash('Study is now active.')
                     return redirect(url_for('manage_specific_study', study=study))
                 except Exception as e:
@@ -255,12 +261,10 @@ def init():
                     }[request.values['timeout']]
                 except:
                     raise ValueError('Invalid timeout specified.')
-                (username, remove_temp_user_fn) = make_temp_user_for_study(study)
-                exp_server.add_participant_code(
-                    username,
+                exp_server.add_invite_code(
                     study,
-                    on_expire=remove_temp_user_fn,
-                    timeout=timeout
+                    timeout=timeout,
+                    session_limit=1
                 )
             except ValueError as e:
                 flash(str(e))
@@ -275,13 +279,10 @@ def init():
     @app.route('/participate/<code>')
     def participate_code(code):
         try:
-            study = exp_server.get_study_for_secret_url_code(code)
+            study = exp_server.activate_participant_code(code)
         except KeyError:
-            # It isn't a secret url code, try participant codes
-            try:
-                study = exp_server.activate_participant_code(code)
-            except:
-                abort(404)
+            # Not a known participant code, return 404
+            abort(404)
         if not auth.check_add_auth(code):
             log('WARN: Code has no corresponding user', code=code)
             abort(404)

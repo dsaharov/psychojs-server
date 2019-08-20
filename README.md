@@ -2,7 +2,7 @@
 
 Serves and manages PsychoPy experiments exported as html.
 
-Requires: Python 3.6 with libraries Flask and Waitress installed.
+Requires: Python 3.6 with libraries: `Flask waitress python-dateutil`
 
 **To start the server** run *serve.py*.
 
