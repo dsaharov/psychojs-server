@@ -38,6 +38,16 @@
         <b>Secret URL</b>: <a href="{{ url_for('participate_code', code=study.get_secret_url(), _external=True) }}">{{ study.get_secret_url() }}</a>
       </span>
         {% endif %}
+        {% if study.has_completion_url()  %}
+      <span class="completion_url">
+        <b>Completion URL</b>: <url>{{study.get_completion_url()}}</url>
+      </span>
+        {% endif %}
+        {% if study.has_cancel_url()  %}
+      <span class="cancel_url">
+        <b>Cancel URL</b>: <url>{{study.get_cancel_url()}}</url>
+      </span>
+        {% endif %}
       {% endif %}
       <h3>Options</h3>
       {% if study.is_active() %}

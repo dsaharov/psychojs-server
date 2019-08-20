@@ -47,7 +47,7 @@ LOCKOUT_DURATION = datetime.timedelta(minutes=10)
 
 
 def init():
-    app = Flask(__name__, static_url_path='', static_folder='psychojs')
+    app = Flask(__name__, static_url_path='', static_folder='js')
     app.secret_key = SECRET_KEY
     auth = SimpleSessionAuth(
         USERS,
@@ -136,8 +136,16 @@ def init():
         if exp.is_active():
             flash('Study is already active!')
         elif request.method == 'POST':
-            size = request.values.get('numSessions', None)
-            access_type = request.values.get('accessType', None)
+            size = request.values.get('numSessions')
+            if not len(size):
+                size = None
+            access_type = request.values.get('accessType')
+            completion_url = request.values.get('completionUrl')
+            if not len(completion_url):
+                completion_url = None
+            cancel_url = request.values.get('cancelUrl')
+            if not len(cancel_url):
+                cancel_url = None
             if size is not None and access_type is not None:
                 try:
                     if size == 'unlimited':
@@ -156,7 +164,12 @@ def init():
                             'invite-and-url',
                             'url-only']:
                         raise ValueError('Unknown access type')
-                    exp.start_run(size=size, access_type=access_type)
+                    exp.start_run(
+                        size=size,
+                        access_type=access_type,
+                        completion_url=completion_url,
+                        cancel_url=cancel_url
+                    )
                     if access_type in ['invite-and-url', 'url-only']:
                         (code, remove_fn) = make_temp_user_for_study(study)
                         exp_server.add_secret_url_code(
@@ -334,11 +347,23 @@ def init():
     def send_css(path):
         return send_from_directory('css', path)
 
+    @app.route('/study/<study>/js/core.js')
+    def send_core_wrapper(study):
+        if not study_access_allowed(study):
+            abort(404)
+        return send_from_directory('js', 'wrapper.js')
+
+    @app.route('/study/<study>/js/_core.js')
+    def send_core_js(study):
+        if not study_access_allowed(study):
+            abort(404)
+        return send_from_directory('js/psychojs', 'core.js')
+
     @app.route('/study/<study>/js/<path:path>')
     def send_js(study, path):
         if not study_access_allowed(study):
             abort(404)
-        return send_from_directory('psychojs', path)
+        return send_from_directory('js/psychojs', path)
 
     @app.route('/study/<study>/css/<path:path>')
     def send_study_css(study, path):

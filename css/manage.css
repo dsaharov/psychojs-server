@@ -148,3 +148,11 @@ h1,h2,h3 {
 .mr {
   margin-right:10px;
 }
+
+url {
+  display:inline-block;
+  border:1px dotted gray;
+  padding:3px;
+  font-family:monospace;
+  background:#DEDEDE;
+}
