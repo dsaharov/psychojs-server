@@ -22,28 +22,38 @@
       {% endwith %}
       <h2>Activate <i>{{ study.id }}</i> ?</h2>
       <form action="" method="POST">
-        Number of participant sessions:
-        <input type="text" name="numSessions" value="unlimited"></input>
-        <br/>
-        <small>Enter <i>unlimited</i> for no session limit.</small>
-        <br/>
-        Study Accessible by
-        <select name="accessType">
-        <option value="invite-only">Invite Only</option>
-        <option value="invite-and-url">Invite and Secret URL</option>
-        <option value="url-only">Secret URL Only</option>
-        <option value="anyone">Anyone</option>
-        </select>
-        <br/>
-        Completion URL:
-        <input type="text" name="completionUrl"></input>
-        <br/>
-        Cancel URL:
-        <input type="text" name="cancelUrl"></input>
-        <br/>
-        Save data of incomplete sessions:
-        <input type="checkbox" name="saveOnIncomplete" checked></input>
+      <div class="list">
+        <span class="row">
+          <span class="label">
+            Number of participant sessions<br/>
+            <small>Enter <i>unlimited</i> for no session limit.</small>
+          </span>
+          <input type="text" name="numSessions" value="unlimited"></input>
+          <br/>
+        </span>
+        <span class="row">
+          <span class="label">Study Accessible by</span>
+          <select name="accessType">
+          <option value="invite-only">Invite Only</option>
+          <option value="invite-and-url">Invite and Secret URL</option>
+          <option value="url-only">Secret URL Only</option>
+          <option value="anyone">Anyone</option>
+          </select>
+        </span>
+        <span class="row">
+          <span class="label">Completion URL</span>
+          <input type="text" name="completionUrl"></input>
+        </span>
+        <span class="row">
+          <span class="label">Cancel URL</span>
+          <input type="text" name="cancelUrl"></input>
+        </span>
+        <span class="row">
+          <span class="label">Save data of incomplete sessions</span>
+          <input type="checkbox" name="saveOnIncomplete" checked></input>
+        </span>
         <input type="submit" value="Activate"></input>
+      </div>
       </form>
     </div>
     <div class="content-slice footer">

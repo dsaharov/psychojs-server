@@ -21,36 +21,36 @@
         {% endif %}
       {% endwith %}
       <h2>{{ study.id }}</h2>
-      <div class="status">
-      <span class="current-status">
-      <b>Current status</b> {{ 'active' if study.is_active() else 'inactive'}}
+      <div class="list">
+      <span class="row">
+      <span class="label">Current status</span> {{ 'active' if study.is_active() else 'inactive'}}
       </span>
       {% if study.is_active() %}
-      <span class="sessions-remaining">
-        <b>Sessions remaining</b> {{('{} / {}'.format(
+      <span class="row">
+        <span class="label">Sessions remaining</span> {{('{} / {}'.format(
           study.get_remaining_sessions(), study.get_total_sessions()
         ) if study.has_session_limit() else 'unlimited'
       )}}</span>
-      <span class="access-type">
-        <b>Accessible by</b> {{ study.get_access_type() }}
+      <span class="row">
+        <span class="label">Accessible by</span> {{ study.get_access_type() }}
       </span>
         {% if study.has_secret_url() %}
-      <span class="secret-url">
-        <b>Secret URL</b> <url>{{ url_for('participate_code', code=study.get_secret_url(), _external=True) }}</url>
+      <span class="row">
+        <span class="label">Secret URL</span> <url>{{ url_for('participate_code', code=study.get_secret_url(), _external=True) }}</url>
       </span>
         {% endif %}
         {% if study.has_completion_url()  %}
-      <span class="completion_url">
-        <b>Completion URL</b> <url>{{study.get_completion_url()}}</url>
+      <span class="row">
+        <span class="label">Completion URL</span> <url>{{study.get_completion_url()}}</url>
       </span>
         {% endif %}
         {% if study.has_cancel_url()  %}
-      <span class="cancel_url">
-        <b>Cancel URL</b> <url>{{study.get_cancel_url()}}</url>
+      <span class="row">
+        <span class="label">Cancel URL</span> <url>{{study.get_cancel_url()}}</url>
       </span>
         {% endif %}
-      <span>
-        <b>Save incomplete data?</b> {{
+      <span class="row">
+        <span class="label">Save incomplete data?</span> {{
           'Yes' if study.run.save_incomplete_data else 'No'
         }}
       </span>

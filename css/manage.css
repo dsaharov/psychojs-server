@@ -161,21 +161,26 @@ url {
 
 }
 
-.status {
+.list {
   display:flex;
   flex-direction:column;
 }
 
-.status span {
+.list .row {
   align-self: flex-start;
   display: flex;
   justify-content: space-between;
   width:100%;
-  border-bottom: 1px dotted gray;
+  border-bottom: 1px dotted lightgray;
   margin-bottom: 2px;
   padding:5px;
 }
 
-.status b {
+.list .label {
     margin-right:30px;
+    font-weight:bold;
+}
+
+small {
+  font-weight:lighter;
 }
