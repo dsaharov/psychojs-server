@@ -25,7 +25,7 @@
         <ul class="invite-code-list">
         {% for code in codes %}
           <li class="invite-code">
-          <a href="{{ url_for('participate_code', code=code['code'], _external=True) }}">{{ code['code'] }}</a>
+          <url>{{ url_for('participate_code', code=code['code'], _external=True) }}</url>
           <span>One session</span>
           <span>Expires {{ code['timeout'] }}</span>
           </li>

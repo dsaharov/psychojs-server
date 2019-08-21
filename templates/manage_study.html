@@ -21,34 +21,36 @@
         {% endif %}
       {% endwith %}
       <h2>{{ study.id }}</h2>
+      <div class="status">
       <span class="current-status">
-      <b>Current status</b>: {{ 'active' if study.is_active() else 'inactive'}}
+      <b>Current status</b> {{ 'active' if study.is_active() else 'inactive'}}
       </span>
       {% if study.is_active() %}
       <span class="sessions-remaining">
-        <b>Sessions remaining</b>: {{('{} / {}'.format(
+        <b>Sessions remaining</b> {{('{} / {}'.format(
           study.get_remaining_sessions(), study.get_total_sessions()
         ) if study.has_session_limit() else 'unlimited'
       )}}</span>
       <span class="access-type">
-        <b>Accessible by</b>: {{ study.get_access_type() }}
+        <b>Accessible by</b> {{ study.get_access_type() }}
       </span>
         {% if study.has_secret_url() %}
       <span class="secret-url">
-        <b>Secret URL</b>: <a href="{{ url_for('participate_code', code=study.get_secret_url(), _external=True) }}">{{ study.get_secret_url() }}</a>
+        <b>Secret URL</b> <url>{{ url_for('participate_code', code=study.get_secret_url(), _external=True) }}</url>
       </span>
         {% endif %}
         {% if study.has_completion_url()  %}
       <span class="completion_url">
-        <b>Completion URL</b>: <url>{{study.get_completion_url()}}</url>
+        <b>Completion URL</b> <url>{{study.get_completion_url()}}</url>
       </span>
         {% endif %}
         {% if study.has_cancel_url()  %}
       <span class="cancel_url">
-        <b>Cancel URL</b>: <url>{{study.get_cancel_url()}}</url>
+        <b>Cancel URL</b> <url>{{study.get_cancel_url()}}</url>
       </span>
         {% endif %}
       {% endif %}
+      </div>
       <h3>Options</h3>
       {% if study.is_active() %}
       {% if study.get_access_type() == 'invite-only' or study.get_access_type() == 'invite-and-url' %}

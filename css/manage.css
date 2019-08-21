@@ -151,8 +151,31 @@ h1,h2,h3 {
 
 url {
   display:inline-block;
-  border:1px dotted gray;
-  padding:3px;
+  padding:5px;
   font-family:monospace;
   background:#DEDEDE;
+  border:1px solid #CECECE;
+  border-radius:3px;
+  color:#0000CC;
+  font-weight:bold;
+
+}
+
+.status {
+  display:flex;
+  flex-direction:column;
+}
+
+.status span {
+  align-self: flex-start;
+  display: flex;
+  justify-content: space-between;
+  width:100%;
+  border-bottom: 1px dotted gray;
+  margin-bottom: 2px;
+  padding:5px;
+}
+
+.status b {
+    margin-right:30px;
 }
