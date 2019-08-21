@@ -49,6 +49,11 @@
         <span class="label">Cancel URL</span> <url>{{study.get_cancel_url()}}</url>
       </span>
         {% endif %}
+        {% if study.has_briefing_url()  %}
+      <span class="row">
+        <span class="label">Briefing URL</span> <url>{{study.get_briefing_url()}}</url>
+      </span>
+        {% endif %}
       <span class="row">
         <span class="label">Save incomplete data?</span> {{
           'Yes' if study.run.save_incomplete_data else 'No'

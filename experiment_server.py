@@ -74,7 +74,7 @@ class ExperimentRun():
     # The run might be closed at any time by the researcher
 
     def __init__(self, exp, id, data_path, size=None, access_type='invite-only',
-            completion_url=None, cancel_url=None, save_incomplete_data=True):
+            completion_url=None, cancel_url=None, save_incomplete_data=True, briefing_url=None):
         self.experiment = exp
         self.id = id
         self.data_path = data_path
@@ -90,6 +90,8 @@ class ExperimentRun():
         self.cancel_url = cancel_url
         # Data settings
         self.save_incomplete_data = save_incomplete_data
+        # Briefing
+        self.briefing_url = briefing_url
 
     def to_dict(self):
         obj = {
@@ -100,7 +102,8 @@ class ExperimentRun():
             'access_type': self.access_type,
             'completion_url': self.completion_url,
             'cancel_url': self.cancel_url,
-            'save_incomplete_data': self.save_incomplete_data
+            'save_incomplete_data': self.save_incomplete_data,
+            'briefing_url': self.briefing_url
         }
         return obj
 
@@ -113,7 +116,8 @@ class ExperimentRun():
             obj.get('access_type', 'invite-only'),
             obj.get('completion_url'),
             obj.get('cancel_url'),
-            obj.get('save_incomplete_data', True)
+            obj.get('save_incomplete_data', True),
+            obj.get('briefing_url', None)
         )
         run.num_sessions = obj['num_sessions']
         return run
@@ -352,6 +356,12 @@ class PsychoJsExperiment():
 
     def get_cancel_url(self):
         return self.run.cancel_url
+
+    def has_briefing_url(self):
+        return self.run.briefing_url is not None
+
+    def get_briefing_url(self):
+        return self.run.briefing_url
 
 
 class ExperimentServer():
@@ -682,22 +692,26 @@ class ExperimentServer():
         else:
             self.remove_participant_code(code, bulk=bulk)
 
-    def activate_participant_code(self, code):
+    def get_study_for_participant_code(self, code):
+        if code not in self.participant_codes:
+            raise ValueError()
         props = self.participant_codes[code]
-        study = props['study']
-        exp = self.experiments[study]
-
         if 'timeout' in props and \
                 datetime.datetime.now() >= props['timeout']:
             self.log('Participant code is expired', code=code)
             self.remove_code_and_session(code)
             raise ValueError()
+        return props['study']
+
+    def activate_participant_code(self, code):
+        props = self.participant_codes[code]
+        study = props['study']
+        exp = self.experiments[study]
         self.log('Participant code accessed', code=code)
         if 'unique_session' in props and 'session' not in props:
             session_token = exp.open_session()
             props['session'] = session_token
             self.session_code_map[(study, session_token)] = code
-        return study
 
     def get_participant_codes(self, study):
         codes = []

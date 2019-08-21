@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+
+<head>
+    <title>{{ briefing_title }}</title>
+    <style>
+    .center {
+      text-align:center;
+    }
+    iframe {
+      width:100%;
+      min-height:500px;
+    }
+    h2 {
+      font-family:sans-serif;
+      font-weight:normal;
+      border-bottom:1px dotted lightgray;
+    }
+    </style>
+</head>
+
+<body>
+    <div class="center">
+      <h2>Please read the following carefully and respond below.</h2>
+      <iframe src="{{ briefing_src }}"></iframe>
+      <form action="" method="POST">
+      <input type="submit" name="agree" value="I agree"></input>
+      <input type="submit" name="disagree" value="I disagree"></input>
+      </form>
+    </div>
+</body>
+</html>

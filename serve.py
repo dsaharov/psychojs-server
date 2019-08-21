@@ -152,11 +152,14 @@ def init():
                 size = None
             access_type = request.values.get('accessType')
             completion_url = request.values.get('completionUrl')
+            briefing_url = request.values.get('briefingUrl')
             if not len(completion_url):
                 completion_url = None
             cancel_url = request.values.get('cancelUrl')
             if not len(cancel_url):
                 cancel_url = None
+            if not len(briefing_url):
+                briefing_url = None
             save_incomplete_data = 'saveOnIncomplete' in request.values
             if size is not None and access_type is not None:
                 try:
@@ -181,7 +184,8 @@ def init():
                         access_type=access_type,
                         completion_url=completion_url,
                         cancel_url=cancel_url,
-                        save_incomplete_data=save_incomplete_data
+                        save_incomplete_data=save_incomplete_data,
+                        briefing_url=briefing_url
                     )
                     if access_type in ['invite-and-url', 'url-only']:
                         exp_server.add_secret_url(study)
@@ -278,18 +282,6 @@ def init():
             codes=codes
         )
 
-    @app.route('/participate/<code>')
-    def participate_code(code):
-        try:
-            study = exp_server.activate_participant_code(code)
-        except KeyError:
-            # Not a known participant code, return 404
-            abort(404)
-        if not auth.check_add_auth(code):
-            log('WARN: Code has no corresponding user', code=code)
-            abort(404)
-        return redirect(url_for('send_study', study=study))
-
     @app.route('/manage/new/', methods=['GET', 'POST'])
     def new_study():
         if not admin_access_allowed():
@@ -345,6 +337,35 @@ def init():
             )
         else:
             return render_template('login.html')
+
+    @app.route('/done')
+    def disagree_page():
+        return 'You may now close this window.'
+
+    @app.route('/participate/<code>', methods=['GET', 'POST'])
+    def participate_code(code):
+        try:
+            study = exp_server.get_study_for_participant_code(code)
+        except:
+            abort(404)
+        exp = exp_server.get_experiment(study)
+        if exp.has_briefing_url() and request.method == 'GET':
+            return render_template(
+                'briefing.html',
+                briefing_title='Participate in a Study',
+                briefing_src=exp.get_briefing_url()
+            )
+        else:
+            if not exp.has_briefing_url() or \
+                    request.values.get('agree') is not None:
+                exp_server.activate_participant_code(code)
+                if not auth.check_add_auth(code):
+                    log('WARN: Code has no corresponding user', code=code)
+                    abort(404)
+                return redirect(url_for('send_study', study=study))
+            else:
+                return redirect(url_for('disagree_page'))
+
 
     @app.route('/css/<path>')
     def send_css(path):
