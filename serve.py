@@ -157,6 +157,7 @@ def init():
             cancel_url = request.values.get('cancelUrl')
             if not len(cancel_url):
                 cancel_url = None
+            save_incomplete_data = 'saveOnIncomplete' in request.values
             if size is not None and access_type is not None:
                 try:
                     if size == 'unlimited':
@@ -168,7 +169,7 @@ def init():
                                 raise ValueError()
                         except:
                             raise ValueError(
-                                'Please enter a positive whole number.')
+                                'Please enter a positive whole number for session limit')
                     if access_type not in [
                             'anyone',
                             'invite-only',
@@ -179,7 +180,8 @@ def init():
                         size=size,
                         access_type=access_type,
                         completion_url=completion_url,
-                        cancel_url=cancel_url
+                        cancel_url=cancel_url,
+                        save_incomplete_data=save_incomplete_data
                     )
                     if access_type in ['invite-and-url', 'url-only']:
                         exp_server.add_secret_url(study)

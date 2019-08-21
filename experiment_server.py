@@ -15,27 +15,25 @@ EXPERIMENT_SESSION_TIMEOUT = datetime.timedelta(hours=2)
 
 class ExperimentSession():
 
-    def __init__(self, run, token, data_path, save_data_on_incomplete,
-            completion_url=None, cancel_url=None):
+    def __init__(self, run, token, data_path):
         self.token = token
         self.run = run
         self.data_path = data_path
-        self.save_data_on_incomplete = save_data_on_incomplete
         self.data = {}
         self.start_time = datetime.datetime.now()
         self.has_data = False
         self.is_complete = False
-        # Redirect URLs
-        self.completion_url = completion_url
-        self.cancel_url = cancel_url
 
     def log(self, msg, **kwargs):
         self.run.log(msg, token=self.token, **kwargs)
 
     def accept_data(self, key, value, save_format):
         self.log('Incoming data, format {}'.format(save_format))
-        self.data[key] = value
-        self.has_data = True
+        if value is None or len(value) < 1 or value == '\n':
+            self.log('Data is empty, ignoring.')
+        else:
+            self.data[key] = value
+            self.has_data = True
 
     def save_data(self):
         for key in self.data:
@@ -56,16 +54,16 @@ class ExperimentSession():
         ))
         self.is_complete = session_completed
         if self.has_data and \
-                (session_completed or self.save_data_on_incomplete):
+                (session_completed or self.run.save_incomplete_data):
             self.log('Saving data...')
             self.save_data()
         self.run.on_session_closed(self, bulk)
 
     def get_redirect_url_override(self):
         if self.is_complete:
-            return self.completion_url
+            return self.run.completion_url
         else:
-            return self.cancel_url
+            return self.run.cancel_url
 
 
 class ExperimentRun():
@@ -76,7 +74,7 @@ class ExperimentRun():
     # The run might be closed at any time by the researcher
 
     def __init__(self, exp, id, data_path, size=None, access_type='invite-only',
-            completion_url=None, cancel_url=None):
+            completion_url=None, cancel_url=None, save_incomplete_data=True):
         self.experiment = exp
         self.id = id
         self.data_path = data_path
@@ -90,7 +88,8 @@ class ExperimentRun():
         # Redirect URLs
         self.completion_url = completion_url
         self.cancel_url = cancel_url
-
+        # Data settings
+        self.save_incomplete_data = save_incomplete_data
 
     def to_dict(self):
         obj = {
@@ -100,7 +99,8 @@ class ExperimentRun():
             'num_sessions': self.num_sessions,
             'access_type': self.access_type,
             'completion_url': self.completion_url,
-            'cancel_url': self.cancel_url
+            'cancel_url': self.cancel_url,
+            'save_incomplete_data': self.save_incomplete_data
         }
         return obj
 
@@ -109,10 +109,11 @@ class ExperimentRun():
             exp,
             obj['id'],
             obj['data_path'],
-            obj['size'],
-            obj['access_type'],
-            obj['completion_url'],
-            obj['cancel_url']
+            obj.get('size'),
+            obj.get('access_type', 'invite-only'),
+            obj.get('completion_url'),
+            obj.get('cancel_url'),
+            obj.get('save_incomplete_data', True)
         )
         run.num_sessions = obj['num_sessions']
         return run
@@ -134,7 +135,8 @@ class ExperimentRun():
         self.experiment.on_run_finished(self)
 
     def on_session_closed(self, session, bulk=False):
-        if session.has_data:
+        if session.has_data and (
+                session.is_complete or self.save_incomplete_data):
             self.num_sessions += 1
         token = session.token
         del self.sessions[token]
@@ -172,10 +174,7 @@ class ExperimentRun():
         experiment_session = ExperimentSession(
             self,
             token,
-            self.data_path,
-            save_data_on_incomplete=True, #TODO: load from settings,
-            completion_url=self.completion_url,
-            cancel_url=self.cancel_url
+            self.data_path
         )
         self.sessions[token] = experiment_session
         return token
@@ -194,7 +193,7 @@ class PsychoJsExperiment():
         # Filesystem location
         self.data_path = data_path
         # Current run
-        self.next_run_id = 1 #TODO: this needs to persist (key for data)
+        self.next_run_id = 1
         self.run = None
         # Permissions
         self.admins = set()
@@ -241,8 +240,7 @@ class PsychoJsExperiment():
         self.next_run_id += 1
         return id
 
-    def start_run(self, size=None, access_type='invite-only',
-            completion_url=None, cancel_url=None):
+    def start_run(self, **kwargs):
         if self.is_active():
             raise ValueError()
         while True:
@@ -258,10 +256,7 @@ class PsychoJsExperiment():
             self,
             id,
             run_data_path,
-            size,
-            access_type,
-            completion_url,
-            cancel_url
+            **kwargs
         )
         os.makedirs(run_data_path)
         self.save_metadata()

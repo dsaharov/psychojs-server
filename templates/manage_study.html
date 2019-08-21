@@ -49,6 +49,11 @@
         <b>Cancel URL</b> <url>{{study.get_cancel_url()}}</url>
       </span>
         {% endif %}
+      <span>
+        <b>Save incomplete data?</b> {{
+          'Yes' if study.run.save_incomplete_data else 'No'
+        }}
+      </span>
       {% endif %}
       </div>
       <h3>Options</h3>
