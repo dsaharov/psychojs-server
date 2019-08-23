@@ -9,6 +9,7 @@ import shutil
 import subprocess
 from contextlib import contextmanager
 from dateutil.parser import parse as parse_datestr
+import urllib
 
 
 EXPERIMENT_SESSION_TIMEOUT = datetime.timedelta(hours=2)
@@ -48,13 +49,15 @@ class ExperimentSession():
                 f.write(self.data[key])
             self.log('Wrote {}'.format(key))
 
-    def close(self, session_completed=False, bulk=False):
+    def set_completed(self, completed):
+        self.is_complete = completed
+
+    def close(self, bulk=False):
         self.log('Closing session ({})'.format(
-            'complete' if session_completed else 'incomplete'
+            'complete' if self.is_complete else 'incomplete'
         ))
-        self.is_complete = session_completed
         if self.has_data and \
-                (session_completed or self.run.save_incomplete_data):
+                (self.is_complete or self.run.save_incomplete_data):
             self.log('Saving data...')
             self.save_data()
         self.run.on_session_closed(self, bulk)
@@ -73,8 +76,17 @@ class ExperimentRun():
     # Each run should store its data seperately
     # The run might be closed at any time by the researcher
 
-    def __init__(self, exp, id, data_path, size=None, access_type='invite-only',
-            completion_url=None, cancel_url=None, save_incomplete_data=True, briefing_url=None):
+    def __init__(self,
+            exp,
+            id,
+            data_path,
+            size=None,
+            access_type='invite-only',
+            completion_url=None,
+            cancel_url=None,
+            save_incomplete_data=True,
+            briefing_url=None,
+            debriefing_url=None):
         self.experiment = exp
         self.id = id
         self.data_path = data_path
@@ -92,6 +104,7 @@ class ExperimentRun():
         self.save_incomplete_data = save_incomplete_data
         # Briefing
         self.briefing_url = briefing_url
+        self.debriefing_url = debriefing_url
 
     def to_dict(self):
         obj = {
@@ -103,7 +116,8 @@ class ExperimentRun():
             'completion_url': self.completion_url,
             'cancel_url': self.cancel_url,
             'save_incomplete_data': self.save_incomplete_data,
-            'briefing_url': self.briefing_url
+            'briefing_url': self.briefing_url,
+            'debriefing_url': self.debriefing_url
         }
         return obj
 
@@ -117,7 +131,8 @@ class ExperimentRun():
             obj.get('completion_url'),
             obj.get('cancel_url'),
             obj.get('save_incomplete_data', True),
-            obj.get('briefing_url', None)
+            obj.get('briefing_url', None),
+            obj.get('debriefing_url', None)
         )
         run.num_sessions = obj['num_sessions']
         return run
@@ -363,6 +378,12 @@ class PsychoJsExperiment():
     def get_briefing_url(self):
         return self.run.briefing_url
 
+    def has_debriefing_url(self):
+        return self.run.debriefing_url is not None
+
+    def get_debriefing_url(self):
+        return self.run.debriefing_url
+
 
 class ExperimentServer():
 
@@ -602,10 +623,19 @@ class ExperimentServer():
             #TODO: unusued parameters
             # experiment_full_path = request.values['experimentFullPath']
             session_completed = request.values['isCompleted'] == 'true'
-            session.close(session_completed)
+            session.set_completed(session_completed)
+            session.close()
             url_override = session.get_redirect_url_override()
-            if url_override is not None:
+            if session.run.debriefing_url is not None:
+                if url_override is not None:
+                    response['url'] = 'debrief?next={}'.format(
+                        urllib.parse.quote(url_override)
+                    )
+                else:
+                    response['url'] = 'debrief'
+            elif url_override is not None:
                 response['url'] = url_override
+
         elif command == 'save_data':
             #TODO: unusued parameters
             # experiment_full_path = request.values['experimentFullPath']

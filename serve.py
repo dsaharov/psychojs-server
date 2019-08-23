@@ -153,6 +153,7 @@ def init():
             access_type = request.values.get('accessType')
             completion_url = request.values.get('completionUrl')
             briefing_url = request.values.get('briefingUrl')
+            debriefing_url = request.values.get('debriefingUrl')
             if not len(completion_url):
                 completion_url = None
             cancel_url = request.values.get('cancelUrl')
@@ -160,6 +161,8 @@ def init():
                 cancel_url = None
             if not len(briefing_url):
                 briefing_url = None
+            if not len(debriefing_url):
+                debriefing_url = None
             save_incomplete_data = 'saveOnIncomplete' in request.values
             if size is not None and access_type is not None:
                 try:
@@ -185,7 +188,8 @@ def init():
                         completion_url=completion_url,
                         cancel_url=cancel_url,
                         save_incomplete_data=save_incomplete_data,
-                        briefing_url=briefing_url
+                        briefing_url=briefing_url,
+                        debriefing_url=debriefing_url
                     )
                     if access_type in ['invite-and-url', 'url-only']:
                         exp_server.add_secret_url(study)
@@ -366,6 +370,31 @@ def init():
             else:
                 return redirect(url_for('disagree_page'))
 
+    @app.route('/study/<study>/debrief', methods=['GET', 'POST'])
+    def send_debriefing_form(study):
+        #TODO: auth for this page is complicated
+        # due to temporary auth for invite codes
+        # expiring on study completion
+        # So for now this page can be accessed unauthed
+        if request.method == 'POST':
+            if 'finish' in request.values:
+                #TODO: there's probably a better way to get the redirect URL
+                # than ferrying it in the request
+                next_url = request.values.get('next', url_for('disagree_page'))
+                auth.revoke_session_key_if_temporary()
+                return redirect(next_url)
+            else:
+                abort(404)
+        else:
+            # TODO: this part will fail if the run has just reached
+            # session limit
+            exp = exp_server.get_experiment(study)
+            return render_template(
+                'debriefing.html',
+                debriefing_title='Study Debriefing',
+                debriefing_src=(exp.get_debriefing_url()
+                    if exp.has_debriefing_url() else 'about:blank')
+            )
 
     @app.route('/css/<path>')
     def send_css(path):

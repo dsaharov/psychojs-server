@@ -141,3 +141,8 @@ class SimpleSessionAuth():
             self.revoke_auth(key)
         del self.users[user]
         del self.user_sessions[user]
+
+    def revoke_session_key_if_temporary(self):
+        auth_user = self.get_authed_user()
+        if auth_user is not None and 'password' not in self.users[auth_user]:
+            self.revoke_session_key()
