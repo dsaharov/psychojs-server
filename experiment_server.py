@@ -16,7 +16,7 @@ EXPERIMENT_SESSION_TIMEOUT = datetime.timedelta(hours=2)
 
 class ExperimentSession():
 
-    def __init__(self, run, token, data_path):
+    def __init__(self, run, token, data_path, session_args={}):
         self.token = token
         self.run = run
         self.data_path = data_path
@@ -24,6 +24,7 @@ class ExperimentSession():
         self.start_time = datetime.datetime.now()
         self.has_data = False
         self.is_complete = False
+        self.session_args = session_args
 
     def log(self, msg, **kwargs):
         self.run.log(msg, token=self.token, **kwargs)
@@ -86,7 +87,8 @@ class ExperimentRun():
             cancel_url=None,
             save_incomplete_data=True,
             briefing_url=None,
-            debriefing_url=None):
+            debriefing_url=None,
+            session_args={}):
         self.experiment = exp
         self.id = id
         self.data_path = data_path
@@ -105,6 +107,8 @@ class ExperimentRun():
         # Briefing
         self.briefing_url = briefing_url
         self.debriefing_url = debriefing_url
+        # Session URL params
+        self.session_args = session_args
 
     def to_dict(self):
         obj = {
@@ -117,7 +121,8 @@ class ExperimentRun():
             'cancel_url': self.cancel_url,
             'save_incomplete_data': self.save_incomplete_data,
             'briefing_url': self.briefing_url,
-            'debriefing_url': self.debriefing_url
+            'debriefing_url': self.debriefing_url,
+            'session_args': json.dumps(self.session_args)
         }
         return obj
 
@@ -132,7 +137,8 @@ class ExperimentRun():
             obj.get('cancel_url'),
             obj.get('save_incomplete_data', True),
             obj.get('briefing_url', None),
-            obj.get('debriefing_url', None)
+            obj.get('debriefing_url', None),
+            json.loads(obj.get('session_args', '{}'))
         )
         run.num_sessions = obj['num_sessions']
         return run
@@ -187,16 +193,29 @@ class ExperimentRun():
             self.log('Closing expired session.', token=token)
             self.sessions[token].close()
 
-    def open_session(self):
+    def open_session(self, params):
         token = self.get_next_session_token()
         self.log('Opening session', token=token)
+        # Resolve session arguments from given params
+        session_args = {}
+        for key in self.session_args:
+            value = self.session_args[key]
+            if value is not None:
+                if type(value) is str and value.startswith('URL.'):
+                    url_key = value[len('URL.'):]
+                    if url_key in params:
+                        session_args[key] = params[url_key]
+                else:
+                    session_args[key] = value
+
         experiment_session = ExperimentSession(
             self,
             token,
-            self.data_path
+            self.data_path,
+            session_args
         )
         self.sessions[token] = experiment_session
-        return token
+        return experiment_session
 
     def cancel(self):
         self.close_all_sessions()
@@ -285,10 +304,10 @@ class PsychoJsExperiment():
             raise ValueError()
         self.run.cancel()
 
-    def open_session(self):
+    def open_session(self, params):
         if not self.is_active():
             raise ValueError()
-        return self.run.open_session()
+        return self.run.open_session(params)
 
     def on_session_closed(self, session, bulk=False):
         self.server.on_session_closed(self, session, bulk=bulk)
@@ -384,6 +403,12 @@ class PsychoJsExperiment():
     def get_debriefing_url(self):
         return self.run.debriefing_url
 
+    def has_session_args(self):
+        return len(self.run.session_args.keys()) > 0
+
+    def get_session_args(self):
+        return self.run.session_args
+
 
 class ExperimentServer():
 
@@ -393,9 +418,11 @@ class ExperimentServer():
         self.study_path = study_path
         # Participant codes
         self.participant_codes = {}
-        self.session_code_map = {}
         # Code generation
         self.code_generator_fn = code_generator_fn
+        # HTTP Session to Experiment Session map
+        self.user_session_map = {}
+        self.session_user_map = {}
 
     def log(self, msg, **kwargs):
         log(msg, **kwargs)
@@ -595,34 +622,33 @@ class ExperimentServer():
     def get_config(self, study):
         return self.experiments[study].config
 
-    def has_unique_session_code(self, code):
-        return code in self.participant_codes and \
-            self.participant_codes[code].get(
-                'unique_session',
-                False
-            )
+    def has_participant_code(self, code):
+        return code in self.participant_codes
 
-    def handle_request(self, study, request, user):
+    def handle_request(self, study, params, user_key):
         exp = self.experiments[study]
-        command = request.args['command']
+        command = params['command']
         exp.log('Request: {}'.format(command))
         response = {}
-        token = request.values.get('token', None)
+        token = params.get('token', None)
+        session = None
         if token is not None:
             session = exp.get_session(token)
+        elif user_key in self.user_session_map:
+            session = self.user_session_map[user_key]['session']
+            token = session.token
+
         if command == 'open_session':
             exp.timeout_old_sessions()
-            if self.has_unique_session_code(user):
-                token = self.participant_codes[user]['session']
-            else:
-                token = exp.open_session()
+            if session is None:
+                raise ValueError()
             response['token'] = token
             #TODO: unusued parameters
-            # experiment_full_path = request.values['experimentFullPath']
+            # experiment_full_path = params['experimentFullPath']
         elif command == 'close_session':
             #TODO: unusued parameters
-            # experiment_full_path = request.values['experimentFullPath']
-            session_completed = request.values['isCompleted'] == 'true'
+            # experiment_full_path = params['experimentFullPath']
+            session_completed = params['isCompleted'] == 'true'
             session.set_completed(session_completed)
             session.close()
             url_override = session.get_redirect_url_override()
@@ -638,10 +664,10 @@ class ExperimentServer():
 
         elif command == 'save_data':
             #TODO: unusued parameters
-            # experiment_full_path = request.values['experimentFullPath']
-            save_format = request.values['saveFormat']
-            key = request.values['key']
-            data = request.values['value']
+            # experiment_full_path = params['experimentFullPath']
+            save_format = params['saveFormat']
+            key = params['key']
+            data = params['value']
             session.accept_data(key, data, save_format)
         return response
 
@@ -656,6 +682,7 @@ class ExperimentServer():
         code = props['code']
         self.log('New code',code=code, study=study)
         props.update(kwargs)
+        props['sessions'] = set()
         self.participant_codes[code] = props
         return code
 
@@ -663,8 +690,8 @@ class ExperimentServer():
         self.log('Removing participant code', code=code)
         props = self.participant_codes[code]
         props['on_remove']()
-        if 'session' in props:
-            del self.session_code_map[(props['study'], props['session'])]
+        if len(props['sessions']) > 0:
+            self.log('REMOVED CODE STILL HAD SESSIONS!!',code=code)
         del self.participant_codes[code]
         if not bulk:
             self.save_server_metadata_file()
@@ -696,13 +723,17 @@ class ExperimentServer():
         self.save_server_metadata_file()
 
     def on_session_closed(self, experiment, session, bulk=False):
-        try:
-            key = (
-                experiment.id,
-                session.token
-            )
-            code = self.session_code_map[key]
+        user_key = self.get_user_for_session(experiment.id, session.token)
+        session_obj = self.get_session_for_user(user_key)
+        del self.user_session_map[user_key]
+        del self.session_user_map[(experiment.id, session.token)]
+        # If the user is accessing the server through a participant code,
+        # log the session's completion in the code stats
+        code = session_obj.get('code')
+        if code is not None:
             props = self.participant_codes[code]
+            props['sessions'].remove(session.token)
+            # Remove the code if it's reached its session limit
             if 'session_limit' in props:
                 session_count = props.get('session_count', 0) + 1
                 if session_count == props['session_limit']:
@@ -711,14 +742,12 @@ class ExperimentServer():
                     props['session_count'] = session_count
                     if not bulk:
                         self.save_server_metadata_file()
-        except KeyError:
-            pass # harmless
 
     def remove_code_and_session(self, code, bulk=False):
         props = self.participant_codes[code]
-        if 'session' in props:
-            self.experiments[props['study']].get_session(
-                props['session']).close(bulk=bulk)
+        exp = self.get_experiment(props['study'])
+        for token in list(props['sessions']):
+            exp.get_session(token).close(bulk=bulk)
         else:
             self.remove_participant_code(code, bulk=bulk)
 
@@ -733,15 +762,42 @@ class ExperimentServer():
             raise ValueError()
         return props['study']
 
-    def activate_participant_code(self, code):
+    def get_session_for_user(self, user_key):
+        return self.user_session_map.get(user_key)
+
+    def get_user_for_session(self, study, token):
+        return self.session_user_map.get((study, token))
+
+    def user_has_session(self, user_key):
+        return user_key in self.user_session_map
+
+    def close_user_session(self, user_key):
+        self.log('Closing existing user session...')
+        self.get_session_for_user(user_key)['session'].close()
+
+    def close_user_session_if_exists(self, user_key):
+        if self.user_has_session(user_key):
+            self.log('Closing existing session for user')
+            self.get_session_for_user(user_key)['session'].close()
+
+    def start_session_for_user(self, study, user_key, params, code=None):
+        session = self.get_experiment(study).open_session(params)
+        self.user_session_map[user_key] = {
+            'study': study,
+            'session': session,
+            'code': code
+        }
+        self.session_user_map[(study, session.token)] = user_key
+        if code is not None:
+            self.participant_codes[code]['sessions'].add(session.token)
+
+    def activate_participant_code(self, code, params, user_key):
         props = self.participant_codes[code]
         study = props['study']
         exp = self.experiments[study]
         self.log('Participant code accessed', code=code)
-        if 'unique_session' in props and 'session' not in props:
-            session_token = exp.open_session()
-            props['session'] = session_token
-            self.session_code_map[(study, session_token)] = code
+        if not self.user_has_session(user_key):
+            self.start_session_for_user(study, user_key, params, code)
 
     def get_participant_codes(self, study):
         codes = []

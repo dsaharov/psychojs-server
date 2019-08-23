@@ -25,6 +25,16 @@
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/tone/13.8.6/Tone.min.js"></script>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.1.2/howler.min.js"></script>
 
+
+    {% if virtual_search_params is not none %}
+    <script>
+      window.virtualSearchParams = {
+        {% for kv in virtual_search_params %}
+        {{kv[0]}}: "{{kv[1]}}",
+        {% endfor %}
+      };
+    </script>
+    {% endif %}
     <!-- experiment -->
     <script type='module' src='./exp.js'></script>
 

@@ -164,6 +164,17 @@ def init():
             if not len(debriefing_url):
                 debriefing_url = None
             save_incomplete_data = 'saveOnIncomplete' in request.values
+
+            session_args = {}
+            session_args_str = request.values.get('params')
+            if session_args_str is not None and session_args_str != \
+                    'param=value': # ignore the default
+                for line in session_args_str.split('\n'):
+                    if not '=' in line:
+                        continue
+                    keypair = [x.strip() for x in line.split('=')]
+                    session_args[keypair[0]] = keypair[1]
+
             if size is not None and access_type is not None:
                 try:
                     if size == 'unlimited':
@@ -189,7 +200,8 @@ def init():
                         cancel_url=cancel_url,
                         save_incomplete_data=save_incomplete_data,
                         briefing_url=briefing_url,
-                        debriefing_url=debriefing_url
+                        debriefing_url=debriefing_url,
+                        session_args=session_args
                     )
                     if access_type in ['invite-and-url', 'url-only']:
                         exp_server.add_secret_url(study)
@@ -362,10 +374,14 @@ def init():
         else:
             if not exp.has_briefing_url() or \
                     request.values.get('agree') is not None:
-                exp_server.activate_participant_code(code)
                 if not auth.check_add_auth(code):
                     log('WARN: Code has no corresponding user', code=code)
                     abort(404)
+                exp_server.activate_participant_code(
+                    code,
+                    request.values,
+                    auth.get_session_key()
+                )
                 return redirect(url_for('send_study', study=study))
             else:
                 return redirect(url_for('disagree_page'))
@@ -404,13 +420,19 @@ def init():
     def send_core_wrapper(study):
         if not study_access_allowed(study):
             abort(404)
-        return send_from_directory('js', 'wrapper.js')
+        return send_from_directory('js', 'wrapper_core.js')
 
-    @app.route('/study/<study>/js/_core.js')
-    def send_core_js(study):
+    @app.route('/study/<study>/js/util.js')
+    def send_util_wrapper(study):
         if not study_access_allowed(study):
             abort(404)
-        return send_from_directory('js/psychojs', 'core.js')
+        return send_from_directory('js', 'wrapper_util.js')
+
+    @app.route('/study/<study>/js/_<file>')
+    def send_unwrapped_js(study, file):
+        if not study_access_allowed(study):
+            abort(404)
+        return send_from_directory('js/psychojs', file)
 
     @app.route('/study/<study>/js/<path:path>')
     def send_js(study, path):
@@ -428,7 +450,43 @@ def init():
     def send_study(study):
         if not study_access_allowed(study):
             abort(404)
-        return render_template('study_index.html', study=study)
+        code = auth.get_authed_user()
+        is_temp_user = exp_server.has_participant_code(code)
+        user_key = auth.get_session_key()
+        #TODO: this breaks "Anyone" access setting
+        # we should generate a temp user on the fly to keep thins consistent
+        if code is None or user_key is None:
+            abort(404)
+        if exp_server.user_has_session(user_key):
+             if not is_temp_user:
+                # This is not a temporary user, close their existing session.
+                exp_server.close_user_session(user_key)
+        elif is_temp_user:
+            # Temp users should never not have a study session
+            log('TEMP USER HAS NO STUDY SESSION',study=study)
+            auth.revoke_session_key()
+            abort(404)
+
+        if not exp_server.user_has_session(user_key):
+            exp_server.start_session_for_user(
+                study,
+                user_key,
+                request.values
+            )
+
+        if exp_server.get_experiment(study).has_session_args():
+            session = exp_server.get_session_for_user(user_key)['session']
+            params = [
+                (key, value) for key,value in session.session_args.items()
+            ]
+        else:
+            params = None
+
+        return render_template(
+            'study_index.html',
+            study=study,
+            virtual_search_params=params
+        )
 
     @app.route('/study/<study>/config.json')
     def send_study_config(study):
@@ -455,7 +513,7 @@ def init():
         if not study_access_allowed(study):
             abort(404)
         response = exp_server.handle_request(
-            study, request, auth.get_authed_user())
+            study, request.values, auth.get_session_key())
         return jsonify(response)
 
     return app

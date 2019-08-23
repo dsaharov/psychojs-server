@@ -64,6 +64,18 @@
           'Yes' if study.run.save_incomplete_data else 'No'
         }}
       </span>
+        {% if study.has_session_args()  %}
+    <span class="row">
+      <span class="label">Parameters</span>
+      <span class="list">
+        {% for key,value in study.get_session_args().items() %}
+        <span class="row">
+          {{key}}={{value}}
+        </span>
+        {% endfor %}
+      </span>
+    </span>
+        {% endif %}
       {% endif %}
       </div>
       <h3>Options</h3>
