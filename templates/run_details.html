@@ -7,7 +7,7 @@
     <div class="content">
     <div class="content-slice header columns">
       <div class="spread">
-        <div class="back"><a href="{{ url_for('manage_view') }}">Back to studies list</a></div>
+        <div class="back"><a href="{{ url_for('manage_specific_study', study=study.id) }}">Back to "{{ study.id }}"</a></div>
         <div class="user">Logged in as <i>{{ user }}</i> [<a class="logout" href="{{ url_for('logout') }}">logout</a>]</div>
       </div>
       <div class="title">Study Manager</div>
@@ -20,28 +20,18 @@
           {% endfor %}
         {% endif %}
       {% endwith %}
-      <h2>{{ study.id }}</h2>
+      <h2>{{ study.id }} run {{ run.id }}</h2>
       <div class="list">
-      <span class="row">
-        <span class="label">Current status</span>
-        <span>
-          {% if study.is_active() %}
-            active [ <a href="{{ url_for('run_details', study=study.id) }}">run {{ study.run.id }}</a> ]
-          {% else %}
-            inactive
-          {% endif %}
-        </span>
-      </span>
-      {% if study.is_active() %}
       <span class="row">
           <span class="label">Completed sessions</span>
           {{ study.get_num_sessions()}}
       </span>
       <span class="row">
-        <span class="label">Sessions remaining</span> {{('{} / {}'.format(
+        <span class="label">Sessions remaining</span>
+        {{('{} / {}'.format(
           study.get_remaining_sessions(), study.get_total_sessions()
-        ) if study.has_session_limit() else 'unlimited'
-      )}}</span>
+        ) if study.has_session_limit() else 'unlimited' )}}
+      </span>
       <span class="row">
         <span class="label">Accessible by</span> {{ study.get_access_type() }}
       </span>
@@ -75,42 +65,29 @@
           'Yes' if study.run.save_incomplete_data else 'No'
         }}
       </span>
-        {% if study.has_session_args()  %}
-    <span class="row">
-      <span class="label">Parameters</span>
-      <span class="list">
-        {% for key,value in study.get_session_args().items() %}
-        <span class="row">
-          {{key}}={{value}}
+    </div>
+    {% if study.has_session_args()  %}
+    <h3 style="margin-bottom:0px;">Parameter counts</h3>
+    <div class="list">
+    {% for key,value in study.get_session_args().items() %}
+      <span class="row">
+        <span class="list">
+          <span class="row">
+            <span>
+            <b>{{key}}</b>=<i>{{value}}</i>
+            </span>
+          </span>
+          {% for kv in study.get_key_value_counts(key) %}
+          <span class="row">
+            <span>{{kv[0]}}</span>
+            <span>{{kv[1]}}</span>
+          </span>
+          {% endfor %}
         </span>
-        {% endfor %}
       </span>
-    </span>
-        {% endif %}
-      {% endif %}
-      </div>
-      <h3>Options</h3>
-      {% if study.is_active() %}
-      {% if study.get_access_type() == 'invite-only' or study.get_access_type() == 'invite-and-url' %}
-      <a class="get-invite-code button" href="{{ url_for('create_participant_code', study=study.id) }}">Invite Codes...</a>
-      {% endif %}
-      <a class="deactivate-study button" href="{{url_for('deactivate_study', study=study.id)}}">Deactivate...</a>
-      {% else %}
-      <a class="activate-study button" href="{{url_for('activate_study', study=study.id)}}">Activate...</a>
-      {% endif %}
-      <a class="download-data button" href="{{url_for('download_study_data', study=study.id)}}" download>Download Data</a>
-      <h3>Updating study files</h3>
-      {% if study.is_active() %}
-      <i>Study is currently running; deactivate it before changing files.</i>
-      {% else %}
-      <form action="./" method="POST" enctype="multipart/form-data" >
-        Html folder
-        <input type="file" name="newfiles" webkitdirectory mozdirectory multiple=""></input>
-        <br/>
-        <input type="submit" value="Upload new files"></input>
-      </form>
-      {% endif %}
-      <a style="color:red; font-size:10px;" class="delete-study button" href="{{ url_for('delete_study', study=study.id) }}">delete this study</a>
+    {% endfor %}
+    </div>
+    {% endif %}
     </div>
     <div class="content-slice footer">
     </div>

@@ -227,11 +227,14 @@ class ExperimentRun():
         ]
 
     def parse_arg_string(self, key, value, params):
+        if value is None:
+            return None
         if type(value) is str and value.endswith(')'):
             if value.startswith('URL('):
                 url_key = value[len('URL('):-1]
                 if url_key in params:
                     return params[url_key]
+                return None
             elif value.startswith('uniform('):
                 value_list = [x.strip() for x in
                     value[len('uniform('):-1].split(',')]
@@ -252,9 +255,8 @@ class ExperimentRun():
         # Resolve session arguments from given params
         session_args = {}
         for key in self.session_args:
-            value = self.session_args[key]
+            value = self.parse_arg_string(key, self.session_args[key], params)
             if value is not None:
-                value = self.parse_arg_string(key, value, params)
                 session_args[key] = value
                 self.increment_arg_count(key, value)
 

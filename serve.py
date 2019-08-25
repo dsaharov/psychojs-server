@@ -139,6 +139,20 @@ def init():
             user=auth.get_authed_user()
         )
 
+    @app.route('/manage/<study>/details')
+    def run_details(study):
+        if not admin_access_allowed(study=study):
+            abort(404)
+        exp = exp_server.get_experiment(study)
+        if not exp.is_active():
+            return redirect(url_for('manage_specific_study', study=study))
+        return render_template(
+            'run_details.html',
+            study=exp,
+            user=auth.get_authed_user(),
+            run=exp.run
+        )
+
     @app.route('/manage/<study>/activate', methods=['GET', 'POST'])
     def activate_study(study):
         if not admin_access_allowed(study=study):
@@ -206,7 +220,7 @@ def init():
                     if access_type in ['invite-and-url', 'url-only']:
                         exp_server.add_secret_url(study)
                     flash('Study is now active.')
-                    return redirect(url_for('manage_specific_study', study=study))
+                    return redirect(url_for('run_details', study=study))
                 except Exception as e:
                     flash(str(e))
         return render_template(
