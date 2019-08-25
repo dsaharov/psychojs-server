@@ -75,6 +75,22 @@
         {% endfor %}
       </span>
     </span>
+    <span class="row">
+      <span class="label"></span>
+      <span class="list">
+        {% for key in study.get_session_args() %}
+          {{key}}
+          <span class="list">
+            {% for kv in study.get_key_value_counts(key) %}
+              <span class="row">
+                <span><i>{{kv[0]}}</i></span>
+                <span>{{kv[1]}}</span>
+              </span>
+            {% endfor %}
+          </span>
+        {% endfor %}
+      </span>
+    </span>
         {% endif %}
       {% endif %}
       </div>

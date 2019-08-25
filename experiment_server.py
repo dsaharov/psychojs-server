@@ -10,6 +10,7 @@ import subprocess
 from contextlib import contextmanager
 from dateutil.parser import parse as parse_datestr
 import urllib
+import random
 
 
 EXPERIMENT_SESSION_TIMEOUT = datetime.timedelta(hours=2)
@@ -109,6 +110,7 @@ class ExperimentRun():
         self.debriefing_url = debriefing_url
         # Session URL params
         self.session_args = session_args
+        self.arg_counts = {}
 
     def to_dict(self):
         obj = {
@@ -122,7 +124,8 @@ class ExperimentRun():
             'save_incomplete_data': self.save_incomplete_data,
             'briefing_url': self.briefing_url,
             'debriefing_url': self.debriefing_url,
-            'session_args': json.dumps(self.session_args)
+            'session_args': json.dumps(self.session_args),
+            'arg_counts': json.dumps(self.arg_counts)
         }
         return obj
 
@@ -140,6 +143,7 @@ class ExperimentRun():
             obj.get('debriefing_url', None),
             json.loads(obj.get('session_args', '{}'))
         )
+        run.arg_counts = json.loads(obj.get('arg_counts', '{}'))
         run.num_sessions = obj['num_sessions']
         return run
 
@@ -163,6 +167,14 @@ class ExperimentRun():
         if session.has_data and (
                 session.is_complete or self.save_incomplete_data):
             self.num_sessions += 1
+        else:
+            # This submission does not count, undo its session args contribution
+            for key in session.session_args:
+                val = session.session_args[key]
+                self.decrement_arg_count(key, val)
+                if self.arg_counts[key][val] == 0:
+                    del self.arg_counts[key][val]
+
         token = session.token
         del self.sessions[token]
         self.experiment.on_session_closed(session, bulk=bulk)
@@ -193,21 +205,60 @@ class ExperimentRun():
             self.log('Closing expired session.', token=token)
             self.sessions[token].close()
 
+    def get_arg_count(self, key, value):
+        if key not in self.arg_counts:
+            self.arg_counts[key] = {}
+        if value not in self.arg_counts[key]:
+            self.arg_counts[key][value] = 0
+        return self.arg_counts[key][value]
+
+    def set_arg_count(self, key, value, new_count):
+        self.arg_counts[key][value] = new_count
+
+    def increment_arg_count(self, key, value):
+        self.set_arg_count(key, value, self.get_arg_count(key, value) + 1)
+
+    def decrement_arg_count(self, key, value):
+        self.set_arg_count(key, value, self.get_arg_count(key, value) - 1)
+
+    def get_key_counts(self, key):
+        return [
+            (v, self.arg_counts[key][v]) for v in self.arg_counts.get(key, {})
+        ]
+
+    def parse_arg_string(self, key, value, params):
+        if type(value) is str and value.endswith(')'):
+            if value.startswith('URL('):
+                url_key = value[len('URL('):-1]
+                if url_key in params:
+                    return params[url_key]
+            elif value.startswith('uniform('):
+                value_list = [x.strip() for x in
+                    value[len('uniform('):-1].split(',')]
+                lowest_count = None
+                least_common_values = None
+                for v in value_list:
+                    count = self.get_arg_count(key, v)
+                    if lowest_count is None or count < lowest_count:
+                        lowest_count = count
+                        least_common_values = [v]
+                    elif count == lowest_count:
+                        least_common_values.append(v)
+                return random.choice(least_common_values)
+        return value
+
     def open_session(self, params):
         token = self.get_next_session_token()
-        self.log('Opening session', token=token)
         # Resolve session arguments from given params
         session_args = {}
         for key in self.session_args:
             value = self.session_args[key]
             if value is not None:
-                if type(value) is str and value.startswith('URL.'):
-                    url_key = value[len('URL.'):]
-                    if url_key in params:
-                        session_args[key] = params[url_key]
-                else:
-                    session_args[key] = value
+                value = self.parse_arg_string(key, value, params)
+                session_args[key] = value
+                self.increment_arg_count(key, value)
 
+        self.log('Opening session', token=token, **session_args)
         experiment_session = ExperimentSession(
             self,
             token,
@@ -408,6 +459,9 @@ class PsychoJsExperiment():
 
     def get_session_args(self):
         return self.run.session_args
+
+    def get_key_value_counts(self, key):
+        return self.run.get_key_counts(key)
 
 
 class ExperimentServer():
