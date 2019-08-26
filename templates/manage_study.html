@@ -99,6 +99,10 @@
       <a class="activate-study button" href="{{url_for('activate_study', study=study.id)}}">Activate...</a>
       {% endif %}
       <a class="download-data button" href="{{url_for('download_study_data', study=study.id)}}" download>Download Data</a>
+      {% if is_admin  %}
+      <h3>Admin Options</h3>
+      <a class="button" href="{{url_for('clear_sessions', study=study.id)}}">Close ALL Sessions</a>
+      {% endif %}
       <h3>Updating study files</h3>
       {% if study.is_active() %}
       <i>Study is currently running; deactivate it before changing files.</i>

@@ -13,7 +13,7 @@ import urllib
 import random
 
 
-EXPERIMENT_SESSION_TIMEOUT = datetime.timedelta(hours=2)
+EXPERIMENT_SESSION_TIMEOUT = datetime.timedelta(hours=1)
 
 class ExperimentSession():
 

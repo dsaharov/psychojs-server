@@ -55,6 +55,9 @@ def init():
         timeout_duration=LOCKOUT_DURATION
     )
 
+    def user_is_admin():
+        return auth.get_auth().get('super_user', False)
+
     def make_temp_user_for_study(study, username=None):
         username = auth.create_temporary_user(
             properties={
@@ -133,11 +136,24 @@ def init():
                 ))
             except Exception as e:
                 flash(str(e))
+
         return render_template(
             'manage_study.html',
             study=exp_server.get_experiment(study),
-            user=auth.get_authed_user()
+            user=auth.get_authed_user(),
+            is_admin=user_is_admin()
         )
+
+    @app.route('/manage/<study>/clear_sessions')
+    def clear_sessions(study):
+        if not user_is_admin():
+            abort(404)
+        exp = exp_server.get_experiment(study)
+        if not exp.is_active():
+            abort(404)
+        exp.run.close_all_sessions()
+        flash('Closed all sessions.')
+        return redirect(url_for('manage_specific_study', study=study))
 
     @app.route('/manage/<study>/details')
     def run_details(study):
