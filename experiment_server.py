@@ -695,7 +695,6 @@ class ExperimentServer():
             token = session.token
 
         if command == 'open_session':
-            exp.timeout_old_sessions()
             if session is None:
                 raise ValueError()
             response['token'] = token
@@ -837,7 +836,9 @@ class ExperimentServer():
             self.get_session_for_user(user_key)['session'].close()
 
     def start_session_for_user(self, study, user_key, params, code=None):
-        session = self.get_experiment(study).open_session(params)
+        exp = self.get_experiment(study)
+        exp.timeout_old_sessions()
+        session = exp.open_session(params)
         self.user_session_map[user_key] = {
             'study': study,
             'session': session,
