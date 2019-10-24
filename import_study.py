@@ -31,6 +31,9 @@ def import_js(study_name, study_files, study_path):
                     ).replace(
                         'debug: true',
                         'debug: false'
+                    ).replace( # older versions did this
+                        './lib/',
+                        './js/'
                     )
                 )
         #TODO: HACK; for simplicity we assume there is only one js file
@@ -63,20 +66,38 @@ def import_resources(study_name, study_files, js_file_path, study_path):
             )
         )
 
-    resource_str = """
+    with open(js_file_path, encoding='utf-8') as f:
+        contents = f.read()
+
+    if 'psychoJS.start({expName, expInfo});' in contents:
+        replace_str = 'psychoJS.start({expName, expInfo});'
+        resource_str = """
 let resources = [
 {}
 ];
 psychoJS.start({}expName, expInfo, resources{});
-    """.format(
-        ',\n'.join(resources),
-        '{',
-        '}'
-    )
-    with open(js_file_path, encoding='utf-8') as f:
-        contents = f.read()
+        """.format(
+            ',\n'.join(resources),
+            '{',
+            '}'
+        )
+    elif 'psychoJS.start({configURL: \'config.json\', expInfo: expInfo});' in contents:
+        replace_str = 'psychoJS.start({configURL: \'config.json\', expInfo: expInfo});'
+        resource_str = """
+let resources = [
+{}
+];
+psychoJS.start({}configURL: \'config.json\', expInfo: expInfo, resources: resources{});
+        """.format(
+            ',\n'.join(resources),
+            '{',
+            '}'
+        )
+    else:
+        log('COULD NOT FIND A RESOURCE ANCHOR !!!', study=study_name)
+
     with open(js_file_path, 'w', encoding='utf-8') as f:
-        f.write(contents.replace('psychoJS.start({expName, expInfo});', resource_str, 1))
+        f.write(contents.replace(replace_str, resource_str, 1))
 
 def import_study(study_name, study_files, path_root, replace=False):
     study_path = os.path.join(path_root, study_name)
