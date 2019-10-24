@@ -79,9 +79,10 @@ class ExperimentSession():
                 url = url.replace(
                     '{SECRET_URL}', self.run.experiment.secret_url)
             if '{' in url and '}' in url:
-                return url.format(**self.session_args)
+                url = url.format(**self.session_args)
         except:
-            return url
+            self.log('Error parsing url {}'.format(url))
+        return url
 
     def get_redirect_url_override(self):
         if self.is_complete:
