@@ -12,6 +12,17 @@ core.ServerManager.prototype.closeSession = function(isCompleted = false) {
   )
 };
 
+const _uploadData = core.ServerManager.prototype.uploadData;
+core.ServerManager.prototype.uploadData = function(key, value) {
+  let self = this;
+  let args = arguments;
+  return _uploadData.apply(
+    self, ['_exp_info', JSON.stringify(self._psychoJS._experiment.extraInfo)]
+  ).then(function() {
+    return _uploadData.apply(self, args);
+  });
+};
+
 export let {
   EventManager,
   BuilderKeyResponse,

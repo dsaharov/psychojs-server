@@ -31,12 +31,20 @@ class ExperimentSession():
         self.run.log(msg, token=self.token, **kwargs)
 
     def accept_data(self, key, value, save_format):
-        self.log('Incoming data, format {}'.format(save_format))
-        if value is None or len(value) < 1 or value == '\n':
-            self.log('Data is empty, ignoring.')
+        if key == '_exp_info':
+            self.log('Got exp_info')
+            json_value = json.loads(value)
+            self.log('{} keys: {}'.format(
+                len(json_value), [x for x in json_value]
+            ))
+            self.session_args.update(json_value)
         else:
-            self.data[key] = value
-            self.has_data = True
+            self.log('Incoming data, format {}'.format(save_format))
+            if value is None or len(value) < 1 or value == '\n':
+                self.log('Data is empty, ignoring.')
+            else:
+                self.data[key] = value
+                self.has_data = True
 
     def save_data(self):
         for key in self.data:
@@ -64,11 +72,22 @@ class ExperimentSession():
             self.save_data()
         self.run.on_session_closed(self, bulk)
 
+    def fill_url_params(self, url):
+        #TODO: super hacky
+        try:
+            if '{SECRET_URL}' in url:
+                url = url.replace(
+                    '{SECRET_URL}', self.run.experiment.secret_url)
+            if '{' in url and '}' in url:
+                return url.format(**self.session_args)
+        except:
+            return url
+
     def get_redirect_url_override(self):
         if self.is_complete:
-            return self.run.completion_url
+            return self.fill_url_params(self.run.completion_url)
         else:
-            return self.run.cancel_url
+            return self.fill_url_params(self.run.cancel_url)
 
 
 class ExperimentRun():
