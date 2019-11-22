@@ -446,14 +446,26 @@ def init():
     def send_css(path):
         return send_from_directory('css', path)
 
+    @app.route('/study/<study>/js/core.js')
+    def send_core_wrapper(study):
+        if not study_access_allowed(study):
+            abort(404)
+        return send_from_directory('js', 'wrapper_core.js')
+
+    @app.route('/study/<study>/js/util.js')
+    def send_util_wrapper(study):
+        if not study_access_allowed(study):
+            abort(404)
+        return send_from_directory('js', 'wrapper_util.js')
+
     @app.route('/study/<study>/js/core<version>.js')
-    def send_core_wrapper(study, version):
+    def send_core_wrapper_versioned(study, version):
         if not study_access_allowed(study):
             abort(404)
         return send_from_directory('js', 'wrapper_core{}.js'.format(version))
 
     @app.route('/study/<study>/js/util<version>.js')
-    def send_util_wrapper(study, version):
+    def send_util_wrapper_versioned(study, version):
         if not study_access_allowed(study):
             abort(404)
         return send_from_directory('js', 'wrapper_util{}.js'.format(version))
