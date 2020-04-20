@@ -2,8 +2,19 @@
   <head>
     <title>Study Manager</title>
     <link rel="stylesheet" href="{{url_for('send_css',path='manage.css')}}" />
+    <script src="js/jquery-3.5.0.min.js"></script>
   </head>
   <body>
+    <script type="text/javascript">
+    const toggle = function(group) {
+      let id = '#group-'+group;
+      if($(id).is(":visible")) {
+        $(id).hide();
+      } else {
+        $(id).show();
+      }
+    };
+    </script>
     <div class="content">
     <div class="content-slice header columns">
       <div class="spread">
@@ -21,8 +32,12 @@
         {% endif %}
       {% endwith %}
       <h2>My Studies</h2>
+      {% for group in groups %}
+      <div class="group">
+      <h3 onclick="toggle('{{group}}')">{{group}}</h3>
+      <span class="group-container" style="display:none;" id="group-{{group}}">
       <ul class="study-list">
-      {% for study in studies %}
+        {% for study in groups[group] %}
         <li class="study">
           {{ study.id }}
           <span class="study-status">
@@ -45,6 +60,9 @@
         </li>
       {% endfor %}
       </ul>
+      </span>
+    </div>
+      {% endfor %}
       <a class="new-study button" href="{{ url_for('new_study') }}">Add New Study</a>
     </div>
     <div class="content-slice footer">

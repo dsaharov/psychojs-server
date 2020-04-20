@@ -309,6 +309,8 @@ class PsychoJsExperiment():
         # Permissions
         self.admins = set()
         self.secret_url = None
+        # Group
+        self.group = None
 
     def log(self, msg, **kwargs):
         self.server.log(msg, study=self.id, **kwargs)
@@ -422,6 +424,7 @@ class PsychoJsExperiment():
         meta = {}
         meta['admins'] = list(self.admins)
         meta['next_run_id'] = self.next_run_id
+        meta['group'] = self.group
         if self.is_active():
             meta['run'] = self.run.to_dict()
         return json.dumps(meta)
@@ -430,6 +433,7 @@ class PsychoJsExperiment():
         meta = json.loads(json_str)
         self.admins = set(meta.get('admins', []))
         self.next_run_id = meta.get('next_run_id', 1)
+        self.group = meta.get('group', None)
         if 'run' in meta:
             self.run = ExperimentRun.from_dict(self, meta['run'])
 
@@ -751,6 +755,22 @@ class ExperimentServer():
 
     def get_experiment(self, study):
         return self.experiments[study]
+
+    def get_experiment_groups(self):
+        groups = {'unlabelled': []}
+        for e in self.get_experiments():
+            if e.group is not None:
+                if e.group not in groups:
+                    groups[e.group] = []
+                groups[e.group].append(e)
+            else:
+                groups['unlabelled'].append(e)
+        return groups
+
+    def set_study_group(self, study, group):
+        self.experiments[study].group = group
+        self.save_study_metadata(study)
+
 
     def add_participant_code(self, study, code=None, **kwargs):
         props = self.code_generator_fn(study, code=code)

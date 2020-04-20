@@ -184,3 +184,19 @@ url {
 small {
   font-weight:lighter;
 }
+
+.group {
+  min-width:60%;
+}
+
+.group h3 {
+  cursor: pointer;
+}
+
+.group h3:hover{
+  color:gray;
+}
+
+.group-container {
+  width: 100%;
+}

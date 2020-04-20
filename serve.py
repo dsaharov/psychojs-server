@@ -47,7 +47,7 @@ LOCKOUT_DURATION = datetime.timedelta(minutes=10)
 
 
 def init():
-    app = Flask(__name__, static_url_path='', static_folder='js')
+    app = Flask(__name__, static_url_path='', static_folder='static')
     app.secret_key = SECRET_KEY
     auth = SimpleSessionAuth(
         USERS,
@@ -116,6 +116,11 @@ def init():
         log('Creating study directory at {}'.format(STUDY_PATH))
         os.makedirs(STUDY_PATH)
 
+    @app.route('/manage/js/jquery-3.5.0.min.js')
+    def send_jquery():
+        return app.send_static_file('jquery-3.5.0.min.js')
+
+
     @app.route('/manage/logout')
     def logout():
         auth.revoke_session_key()
@@ -142,6 +147,20 @@ def init():
             study=exp_server.get_experiment(study),
             user=auth.get_authed_user(),
             is_admin=user_is_admin()
+        )
+
+    @app.route('/manage/<study>/group', methods=['GET', 'POST'])
+    def edit_study_group(study):
+        if not admin_access_allowed(study=study):
+            abort(404)
+        if request.method == 'POST' and 'group' in request.values:
+            exp_server.set_study_group(study, request.values.get('group'))
+            flash('Updated study group.')
+            return redirect(url_for('manage_specific_study', study=study))
+        return render_template(
+            'edit_study_group.html',
+            study=exp_server.get_experiment(study),
+            user=auth.get_authed_user(),
         )
 
     @app.route('/manage/<study>/clear_sessions')
@@ -373,13 +392,19 @@ def init():
         if admin_access_allowed():
             user = auth.get_authed_user()
             perms = auth.get_auth()
+            groups = exp_server.get_experiment_groups()
+            filtered_groups = {}
+            for group in groups:
+                filtered_groups[group] = sorted(
+                    [x for x in groups[group] if can_edit_study(perms, x)],
+                    key=lambda e:0 if e.is_active() else 1
+                )
+                if len(filtered_groups[group]) < 1:
+                    del filtered_groups[group]
             return render_template(
                 'manage.html',
                 user=user,
-                studies=sorted(
-                    [x for x in exp_server.get_experiments() if can_edit_study(perms, x)],
-                    key=lambda e:0 if e.is_active() else 1
-                ),
+                groups=filtered_groups,
             )
         else:
             return render_template('login.html')
