@@ -50,6 +50,8 @@ def import_resources(study_name, study_files, js_file_path, study_path):
     for f in study_files:
         if not f['name'].startswith('resources_'):
             continue
+        elif f['name'][len('resources_')].startswith('.'):
+            continue
         extension = ''
         idx = f['name'].rfind('.')
         if idx > -1:
