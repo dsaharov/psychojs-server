@@ -32,6 +32,7 @@
         {% endif %}
       {% endwith %}
       <h2>My Studies</h2>
+      <small>Click on a folder to expand it</small>
       {% for group in groups %}
       <div class="group">
       <h3 onclick="toggle('{{group}}')">{{group}}</h3>
